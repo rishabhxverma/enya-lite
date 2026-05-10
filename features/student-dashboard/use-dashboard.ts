@@ -1,37 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { PersonalizedDashboard, StudentProfile } from "@shared/types";
-import { studentService } from "@shared/services/student-service";
+import { useEffect } from "react";
+import type { StudentProfile } from "@shared/types";
+import { useStudentDashboardSWR } from "@shared/services/swr-hooks";
 import { useStudentStore } from "@shared/stores/student-store";
 
 export function useStudentDashboard(studentId: string) {
   const { hydrate, hydrated, getById } = useStudentStore();
-  const [dashboard, setDashboard] = useState<PersonalizedDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  // SWR caches by `student:<id>:dashboard` so flipping Maya↔Liam doesn't
+  // re-hit the API; the previous student's data is held while the new one
+  // revalidates → no skeleton flash.
+  const { data: dashboard, isLoading } = useStudentDashboardSWR(studentId);
 
   useEffect(() => {
     if (!hydrated) hydrate();
   }, [hydrate, hydrated]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    studentService
-      .getDashboard(studentId)
-      .then((data) => {
-        if (!cancelled)
-          setDashboard(data as PersonalizedDashboard);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [studentId]);
-
   const profile: StudentProfile | undefined = getById(studentId);
-  return { profile, dashboard, loading };
+  return { profile, dashboard: dashboard ?? null, loading: isLoading };
 }

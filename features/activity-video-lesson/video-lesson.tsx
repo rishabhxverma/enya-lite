@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import YouTube, { type YouTubePlayer, type YouTubeEvent } from "react-youtube";
 import { motion, AnimatePresence } from "motion/react";
-import { studentService } from "@shared/services/student-service";
+import { useVideoLessonSWR } from "@shared/services/swr-hooks";
 import type { VideoLessonContent, VideoOverlayQuestion } from "@shared/types";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { QuizQuestion } from "@features/activity-text-lesson/quiz-question";
@@ -15,8 +15,17 @@ interface Props {
 }
 
 export function VideoLesson({ studentId, lessonId }: Props) {
-  const [video, setVideo] = useState<VideoLessonContent | null>(null);
-  const [loading, setLoading] = useState(true);
+  // SWR-cached fetch — same student/lesson/youtube combo dedups across remounts.
+  // (Seed file is the source of truth: `student-service` short-circuits to
+  // /seed/lessons-*/photosynthesis-1-video.json under the seed-fallback flag,
+  // and the live API route returns the same shape, so no per-component
+  // post-processing is needed any more.)
+  const { data: video, isLoading } = useVideoLessonSWR(
+    studentId,
+    lessonId,
+    "UPBMG5EYydo"
+  );
+  const loading = isLoading && !video;
   const [pending, setPending] = useState<VideoOverlayQuestion | null>(null);
   const [answered, setAnswered] = useState<Set<string>>(new Set());
   const playerRef = useRef<YouTubePlayer | null>(null);
@@ -24,42 +33,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const { markActivityComplete, awardXp } = useProgressStore();
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    studentService
-      .generateVideoQuestions({
-        studentId,
-        lessonId,
-        youtubeId: "UPBMG5EYydo",
-        learningObjectives: [],
-      })
-      .then(async (qData) => {
-        const seedRes = await fetch(
-          `/seed/lessons-${studentId}/${lessonId}-video.json`
-        );
-        let video: VideoLessonContent;
-        if (seedRes.ok) {
-          const seed = await seedRes.json();
-          video = seed.content as VideoLessonContent;
-        } else {
-          video = {
-            studentId,
-            lessonId,
-            youtubeId: "UPBMG5EYydo",
-            title: "How Plants Make Food",
-            overlayQuestions:
-              (qData as { overlayQuestions: VideoOverlayQuestion[] })
-                .overlayQuestions ?? [],
-          };
-        }
-        if (!cancelled) setVideo(video);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
     return () => {
-      cancelled = true;
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [studentId, lessonId]);

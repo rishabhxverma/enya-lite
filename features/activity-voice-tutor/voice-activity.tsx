@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Mic, Volume2, X } from "lucide-react";
+import { useConversation } from "@elevenlabs/react";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { studentService } from "@shared/services/student-service";
 import { useStudentStore } from "@shared/stores/student-store";
@@ -16,12 +17,24 @@ interface Props {
   lessonId: string;
 }
 
+interface VoiceSessionPayload {
+  signedUrl: string | null;
+  agentPersonaPrompt: string;
+  voiceMode: string;
+  fallbackMp3: string;
+  maxDurationSeconds?: number;
+}
+
 export function VoiceActivity({ studentId, lessonId }: Props) {
   const [state, setState] = useState<State>("idle");
   const [secondsLeft, setSecondsLeft] = useState(300);
   const [transcript, setTranscript] = useState<
     { who: "tutor" | "student"; text: string }[]
   >([]);
+  // `liveActive` flips true the moment we hand off to ElevenLabs. Used to
+  // decide whether `end` calls the SDK's endSession() vs just stops the
+  // simulated audio.
+  const liveActiveRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { hydrate, hydrated, getById } = useStudentStore();
@@ -32,6 +45,84 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
     if (!hydrated) hydrate();
   }, [hydrate, hydrated]);
 
+  // -------------------------------------------------------------------------
+  // ElevenLabs live conversation hook
+  //
+  // We wire callbacks now (cheap — they're no-ops until startSession runs)
+  // and only kick the session off when the API returns a signed URL AND the
+  // demo isn't pinned to simulated mode. onMessage pushes to the same
+  // transcript array the simulated path uses, so the UI doesn't care which
+  // engine is driving.
+  // -------------------------------------------------------------------------
+  const conversation = useConversation({
+    onMessage: ({ message, source }) => {
+      if (!message) return;
+      const who = source === "user" ? "student" : "tutor";
+      setTranscript((t) => [...t, { who, text: message }]);
+    },
+    onError: (msg, ctx) => {
+      console.error("[voice-activity] elevenlabs error", msg, ctx);
+    },
+    onDisconnect: () => {
+      if (liveActiveRef.current) {
+        liveActiveRef.current = false;
+        setState("ended");
+        awardXp(studentId, 25);
+        markActivityComplete(studentId, `${lessonId}-voice`);
+      }
+    },
+  });
+
+  // Map SDK status → our 5-state machine. While live, the orb animation is
+  // driven by `isSpeaking` (true = tutor, false = listening).
+  useEffect(() => {
+    if (!liveActiveRef.current) return;
+    if (conversation.status === "connecting") setState("connecting");
+    else if (conversation.status === "connected")
+      setState(conversation.isSpeaking ? "speaking" : "listening");
+  }, [conversation.status, conversation.isSpeaking]);
+
+  // Run the no-key scripted demo path. Extracted so the live path can also
+  // use it as a graceful fallback if startSession throws.
+  const runSimulated = useCallback(
+    async (session: VoiceSessionPayload) => {
+      setState("speaking");
+      const isMaya = studentId === "maya";
+      const lines = isMaya
+        ? [
+            { who: "tutor" as const, text: "Hi Maya! I love your butterfly garden. Can you tell me — what helps the flower grow?" },
+            { who: "student" as const, text: "Sun?" },
+            { who: "tutor" as const, text: "Yes! The sun helps. What else does the plant need?" },
+            { who: "student" as const, text: "Water." },
+            { who: "tutor" as const, text: "Great! Sun and water. The plant uses these to make its food. You explained it so well!" },
+          ]
+        : [
+            { who: "tutor" as const, text: "Liam, I'll take a position: plants don't really need sunlight — they could grow with just water. Argue against me." },
+            { who: "student" as const, text: "That's wrong. Plants need sunlight for photosynthesis. Without sunlight they can't make glucose." },
+            { who: "tutor" as const, text: "But couldn't they get energy from water alone?" },
+            { who: "student" as const, text: "No — water doesn't provide energy. Sunlight is the energy source the chlorophyll captures." },
+            { who: "tutor" as const, text: "You're right — I conceded! Energy comes from light. Nice argument." },
+          ];
+
+      if (audioRef.current && session.fallbackMp3) {
+        audioRef.current.src = session.fallbackMp3;
+        audioRef.current.play().catch(() => {});
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 1800));
+        setTranscript((t) => [...t, lines[i]]);
+        setState(lines[i].who === "tutor" ? "speaking" : "listening");
+      }
+
+      setState("ended");
+      awardXp(studentId, 25);
+      markActivityComplete(studentId, `${lessonId}-voice`);
+    },
+    [studentId, lessonId, awardXp, markActivityComplete]
+  );
+
   const start = async () => {
     setState("connecting");
     setTranscript([]);
@@ -40,60 +131,38 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
         studentId,
         lessonId,
         activitySubtype: "explain-back",
-      })) as {
-        signedUrl: string | null;
-        voiceMode: string;
-        fallbackMp3: string;
-      };
+      })) as VoiceSessionPayload;
 
-      // Demo strategy: if no live session OR voiceMode=simulated, play fallback MP3
-      // and run a scripted transcript. (Live ElevenLabs SDK wiring is straightforward
-      // when the agent ID + key are provided — useConversation hook from
-      // @elevenlabs/react. For the no-key demo we play the MP3 instead.)
       const useSimulated =
         !session.signedUrl || session.voiceMode === "simulated";
 
       if (useSimulated) {
-        setState("speaking");
-        // Hardcoded scripted transcript (mirrors AM-09 plan)
-        const isMaya = studentId === "maya";
-        const lines = isMaya
-          ? [
-              { who: "tutor" as const, text: "Hi Maya! I love your butterfly garden. Can you tell me — what helps the flower grow?" },
-              { who: "student" as const, text: "Sun?" },
-              { who: "tutor" as const, text: "Yes! The sun helps. What else does the plant need?" },
-              { who: "student" as const, text: "Water." },
-              { who: "tutor" as const, text: "Great! Sun and water. The plant uses these to make its food. You explained it so well!" },
-            ]
-          : [
-              { who: "tutor" as const, text: "Liam, I'll take a position: plants don't really need sunlight — they could grow with just water. Argue against me." },
-              { who: "student" as const, text: "That's wrong. Plants need sunlight for photosynthesis. Without sunlight they can't make glucose." },
-              { who: "tutor" as const, text: "But couldn't they get energy from water alone?" },
-              { who: "student" as const, text: "No — water doesn't provide energy. Sunlight is the energy source the chlorophyll captures." },
-              { who: "tutor" as const, text: "You're right — I conceded! Energy comes from light. Nice argument." },
-            ];
+        await runSimulated(session);
+        return;
+      }
 
-        // Try to play MP3 if it exists; if it 404s, drop to silent text-only sim
-        if (audioRef.current) {
-          audioRef.current.src = session.fallbackMp3;
-          audioRef.current.play().catch(() => {});
-        }
-
-        // Stagger the transcript so it feels like a conversation
-        for (let i = 0; i < lines.length; i++) {
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((r) => setTimeout(r, 1800));
-          setTranscript((t) => [...t, lines[i]]);
-          setState(lines[i].who === "tutor" ? "speaking" : "listening");
-        }
-
-        setState("ended");
-        awardXp(studentId, 25);
-        markActivityComplete(studentId, `${lessonId}-voice`);
-      } else {
-        // TODO: full ElevenLabs SDK wiring with useConversation hook + WebSocket
-        // For now, surface the signed URL and direct user to the simulated fallback.
-        setState("listening");
+      // Live path. Persona overrides flow through `overrides.agent.prompt`
+      // — that's how ElevenLabs lets you swap the system prompt per call
+      // without redefining the agent. (Requires "first message" + "system
+      // prompt" overrides to be enabled on the agent in the EL dashboard.)
+      try {
+        liveActiveRef.current = true;
+        await conversation.startSession({
+          signedUrl: session.signedUrl as string,
+          overrides: {
+            agent: {
+              prompt: { prompt: session.agentPersonaPrompt },
+            },
+          },
+        } as Parameters<typeof conversation.startSession>[0]);
+        // status/isSpeaking effect above will drive the UI from here.
+      } catch (sdkErr) {
+        console.error(
+          "[voice-activity] live startSession failed, falling back",
+          sdkErr
+        );
+        liveActiveRef.current = false;
+        await runSimulated(session);
       }
     } catch (err) {
       console.error("[voice-activity] failed", err);
@@ -120,10 +189,16 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
     };
   }, [state]);
 
-  const end = () => {
-    setState("ended");
-    if (audioRef.current) audioRef.current.pause();
-  };
+  const end = useCallback(() => {
+    if (liveActiveRef.current) {
+      // onDisconnect will flip state→ended and award XP/mark complete.
+      conversation.endSession().catch(() => {});
+      liveActiveRef.current = false;
+    } else {
+      setState("ended");
+      if (audioRef.current) audioRef.current.pause();
+    }
+  }, [conversation]);
 
   const subtitleText =
     studentId === "liam"

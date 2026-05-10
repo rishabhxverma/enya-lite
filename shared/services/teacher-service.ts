@@ -1,3 +1,13 @@
+// Teacher endpoints don't have per-student seed JSON files — their fallbacks
+// live in `shared/lib/stub-content.ts` and run server-side when API keys are
+// missing. The seed-fallback flag is exposed here so the demo console snippet
+// (`localStorage.USE_SEED_FALLBACK='true'`) is one import away if a presenter
+// needs it.
+export {
+  isSeedFallbackEnabled,
+  setSeedFallback,
+} from "./seed-loader-client";
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",

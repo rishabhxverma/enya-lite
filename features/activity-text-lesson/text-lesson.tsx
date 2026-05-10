@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "motion/react";
-import { studentService } from "@shared/services/student-service";
-import type { TextLessonContent } from "@shared/types";
+import { useTextLessonSWR } from "@shared/services/swr-hooks";
 import { ActivityNav } from "./activity-nav";
 import { DiagramCard } from "./diagram-card";
 import { QuizQuestion } from "./quiz-question";
@@ -17,32 +16,12 @@ interface Props {
 }
 
 export function TextLesson({ studentId, lessonId }: Props) {
-  const [lesson, setLesson] = useState<TextLessonContent | null>(null);
-  const [loading, setLoading] = useState(true);
+  // SWR keeps the previous lesson on screen while a new student's content
+  // loads — no skeleton flash when a presenter flips Maya↔Liam mid-demo.
+  const { data: lesson, isLoading } = useTextLessonSWR(studentId, lessonId);
+  const loading = isLoading && !lesson;
   const [correctCount, setCorrectCount] = useState(0);
   const { markActivityComplete, awardXp } = useProgressStore();
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    studentService
-      .generateTextLesson({
-        studentId,
-        lessonId,
-        topic: "photosynthesis",
-        learningObjectives: [],
-      })
-      .then((data) => {
-        if (!cancelled) setLesson(data as TextLessonContent);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [studentId, lessonId]);
 
   // Mark complete when 2/3 answered correctly + confetti on full streak
   useEffect(() => {
