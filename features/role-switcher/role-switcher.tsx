@@ -31,8 +31,7 @@ export function RoleSwitcher() {
     { key: "liam", label: "Liam", emoji: "🚀", href: "/student/liam" },
   ];
 
-  const activeKey =
-    role === "teacher" ? "teacher" : (currentStudentId ?? "maya");
+  const activeKey = role === "teacher" ? "teacher" : currentStudentId ?? "maya";
 
   const onSelect = (p: Pill) => {
     if (p.key === "teacher") setRole("teacher");
@@ -56,16 +55,21 @@ export function RoleSwitcher() {
         const isActive = activeKey === p.key;
         const profile = students.find((s) => s.id === p.key);
         return (
-          <Button asChild key={p.key} variant={isActive? "enya_primary": "enya_neutral"} size="sm">
+          <Button
+            asChild
+            key={p.key}
+            variant={isActive ? "enya_primary" : "enya_neutral"}
+            size="sm"
+          >
             <Link key={p.key} href={p.href} onClick={() => onSelect(p)}>
               <span aria-hidden>{profile?.avatarUrl ? "" : p.emoji}</span>
-              {profile?.avatarUrl && (
+              {/* {profile?.avatarUrl && (
                 <img
                   src={profile.avatarUrl}
                   alt=""
                   className="w-6 h-6 rounded-full object-cover"
                 />
-              )}
+              )} */}
               <span>{p.label}</span>
             </Link>
           </Button>

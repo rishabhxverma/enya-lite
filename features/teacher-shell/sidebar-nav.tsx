@@ -45,12 +45,10 @@ const SECTIONS: Section[] = [
 export function TeacherSidebar() {
   const pathname = usePathname();
   const isActive = (href: string) =>
-    href === "/teacher"
-      ? pathname === "/teacher"
-      : pathname?.startsWith(href);
+    href === "/teacher" ? pathname === "/teacher" : pathname?.startsWith(href);
 
   return (
-    <aside className="hidden md:flex w-[260px] shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground h-[calc(100vh-4rem)] sticky top-16">
+    <aside className="hidden md:flex w-[260px] shrink-0 flex-col border-r bg-white text-sidebar-foreground h-[calc(100vh-4rem)] sticky top-16">
       <nav className="flex-1 overflow-auto p-4 space-y-6">
         {SECTIONS.map((section) => (
           <div key={section.heading}>
@@ -82,15 +80,6 @@ export function TeacherSidebar() {
           </div>
         ))}
       </nav>
-      <div className="p-4 border-t">
-        <Link
-          href="#"
-          className="flex items-center gap-3 px-3 h-9 rounded-md text-sm text-muted-foreground hover:text-foreground"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
-        </Link>
-      </div>
     </aside>
   );
 }

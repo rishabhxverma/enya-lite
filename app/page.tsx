@@ -3,16 +3,34 @@ import { Button } from "@/shared/components/ui/button";
 
 export default function HomePage() {
   return (
-    <div className="min-h-dvh flex flex-col items-center gap-6 justify-center p-5 bg-linear-to-br">
-      <h1 className="text-4xl lg:text-6xl font-semibold tracking-tight">
-        Enya Lite
-      </h1>
-      <p className="text-lg text-muted-foreground max-w-lg mx-auto text-center">
-        A personalized AI tutor that generates a different lesson for every
-        students. It generates the same topic with different vocabulary, stories
-        and illustrations.
-      </p>
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+    <div
+      className="gradient-hero min-h-[80vh] flex flex-col items-center gap-6 justify-center p-5"
+      style={{ "--delay": "150ms" } as React.CSSProperties}
+    >
+      <div
+        className="animate-enter"
+        style={{ "--stagger": 1 } as React.CSSProperties}
+      >
+        <h1 className="text-4xl lg:text-6xl font-semibold tracking-tight">
+          Enya Lite
+        </h1>
+      </div>
+
+      <div
+        className="animate-enter"
+        style={{ "--stagger": 2 } as React.CSSProperties}
+      >
+        <p className="text-lg max-w-lg mx-auto text-center">
+          A personalized AI experience that generates a different lesson for
+          every student. It generates the same topic with different vocabulary,
+          stories and illustrations.
+        </p>
+      </div>
+
+      <div
+        className="animate-enter flex flex-col sm:flex-row items-center justify-center gap-4"
+        style={{ "--stagger": 3 } as React.CSSProperties}
+      >
         <Button asChild variant={"enya_neutral"} size={"lg"}>
           <Link href="/teacher">I&apos;m a Teacher</Link>
         </Button>

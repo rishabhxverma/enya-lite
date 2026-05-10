@@ -13,6 +13,7 @@
 
 import useSWR, { type SWRConfiguration, type SWRResponse } from "swr";
 import { studentService } from "./student-service";
+import { STUB_DASHBOARDS } from "@shared/lib/stub-content";
 import type {
   PersonalizedDashboard,
   StudentProgress,
@@ -45,6 +46,11 @@ export function useStudentDashboardSWR(
   config?: SWRConfiguration
 ): SWRResponse<PersonalizedDashboard | null> {
   const key = studentId ? `student:${studentId}:dashboard` : null;
+  // Render the stub instantly so the user sees real-looking content in <100ms.
+  // SWR then revalidates in the background; the live LLM result replaces the
+  // stub when it resolves (~7–10s) without a skeleton flash.
+  const fallbackData =
+    studentId && STUB_DASHBOARDS[studentId] ? STUB_DASHBOARDS[studentId] : undefined;
   return useSWR<PersonalizedDashboard | null>(
     key,
     async () => {
@@ -52,7 +58,7 @@ export function useStudentDashboardSWR(
       const data = await studentService.getDashboard(studentId);
       return data as PersonalizedDashboard;
     },
-    withDefaults(config)
+    withDefaults({ ...config, fallbackData })
   );
 }
 

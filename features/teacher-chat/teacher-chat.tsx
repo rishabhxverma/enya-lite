@@ -8,9 +8,9 @@ import { ToolResultCard } from "./tool-result-cards";
 import { cn } from "@shared/lib/utils";
 
 const SUGGESTIONS = [
-  "Create a Grade 3 photosynthesis course from this textbook",
-  "Audit my textbook for Bloom's taxonomy alignment",
-  "Add Maya, Grade 3, just arrived from Syria, Emerging level, loves butterflies",
+  "Create a Grade 3 photosynthesis course from this textbook.",
+  "Audit my textbook for Bloom's taxonomy alignment.",
+  "Maya (grade 3) just arrived from Syria. She loves reading and butterflies",
   "Show me Maya's analytics",
 ];
 
@@ -57,7 +57,7 @@ export function TeacherChat() {
     <div
       {...getRootProps()}
       className={cn(
-        "flex flex-col h-[calc(100vh-4rem)] relative",
+        "flex flex-col items-center justify-center h-screen relative",
         isDragActive && "ring-2 ring-yellow-500"
       )}
     >
@@ -70,27 +70,27 @@ export function TeacherChat() {
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-auto px-4 pt-6 pb-4">
-        <div className="max-w-3xl mx-auto w-full">
+      <div
+        ref={scrollRef}
+        className="items-center justify-center  overflow-auto px-4 pt-6 pb-20"
+      >
+        <div className="max-w-xl mx-auto w-full">
           {showEmpty ? (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-yellow-500 mb-4">
-                <Sparkles className="w-8 h-8 text-yellow-950" />
+            <div className="text-center">
+              <div>
+                <h1 className="text-3xl font-semibold mb-1">
+                  Hi! I&apos;m Enya.
+                </h1>
+                <p className="text-xl text-muted-foreground mb-8">
+                  What would you like to build?
+                </p>
               </div>
-              <h1 className="text-3xl font-bold mb-3">
-                Hi! I&apos;m Enya.
-              </h1>
-              <p className="text-lg text-muted-foreground mb-8">
-                I can help you design courses, audit your materials, set up
-                classrooms, or review student progress. What would you like
-                to do?
-              </p>
-              <div className="grid sm:grid-cols-2 gap-2 max-w-2xl mx-auto">
+              <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="text-left rounded-xl border-2 bg-card hover:bg-muted/40 px-4 py-3 text-sm transition"
+                    className="text-center rounded-3xl bg-muted hover:bg-muted px-4 py-3 text-sm transition"
                   >
                     {s}
                   </button>
@@ -150,9 +150,9 @@ export function TeacherChat() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t bg-background/95 backdrop-blur"
+        className="bg-background/95 backdrop-blur max-w-xl mx-auto w-full"
       >
-        <div className="max-w-3xl mx-auto w-full p-4">
+        <div>
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {attachments.map((a) => (
@@ -163,8 +163,8 @@ export function TeacherChat() {
                     a.status === "ready"
                       ? "bg-yellow-100 text-yellow-900"
                       : a.status === "failed"
-                        ? "bg-red-100 text-red-900"
-                        : "bg-muted text-muted-foreground"
+                      ? "bg-red-100 text-red-900"
+                      : "bg-muted text-muted-foreground"
                   )}
                 >
                   📎 {a.filename}
@@ -200,7 +200,7 @@ export function TeacherChat() {
                 }
               }}
               rows={1}
-              placeholder="Message Enya — try 'create a course', 'audit my textbook', 'add Maya'…"
+              placeholder="Create a course', 'audit my textbook', 'add Maya'…"
               className="flex-1 resize-none rounded-xl border-2 px-4 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-yellow-400 max-h-32"
             />
             <button
@@ -211,10 +211,6 @@ export function TeacherChat() {
             >
               <Send className="w-5 h-5" />
             </button>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-2">
-            Drag-drop a PDF anywhere on this panel to upload. Tip: try the
-            suggestion chips when starting fresh.
           </div>
         </div>
       </form>
