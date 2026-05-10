@@ -137,41 +137,154 @@ class BackboardImpl implements BackboardClient {
   async sendMessage(
     opts: SendMessageOptions
   ): Promise<BackboardMessageResponse> {
-    return this.withRetry(async () => {
-      // POST /threads/messages — flat endpoint, thread_id in body. The
-      // assistant binding is on the thread, not per-message.
-      const { data } = await this.http.post(`/threads/messages`, {
-        thread_id: opts.threadId,
-        content: opts.content,
-        tools: opts.tools,
-        memory: opts.memory ?? "Auto",
-        llm_provider: opts.llmProvider,
-        model_name: opts.modelName,
-        system_addendum: opts.systemPromptAddendum,
-        response_format: opts.responseFormat,
-      });
+    // Same Backboard streaming-pipeline issue affects POST /threads/messages
+    // on follow-up turns (notably after a previous tool roundtrip): the user
+    // message and assistant reply both land server-side, but the response
+    // stream returns HTTP 500. We snapshot the thread length before the
+    // POST so we can recover by polling for the new assistant reply.
+    const body = {
+      thread_id: opts.threadId,
+      content: opts.content,
+      tools: opts.tools,
+      memory: opts.memory ?? "Auto",
+      llm_provider: opts.llmProvider,
+      model_name: opts.modelName,
+      system_addendum: opts.systemPromptAddendum,
+      response_format: opts.responseFormat,
+    };
+
+    const baselineCount = await this.getThreadMessageCount(
+      opts.threadId
+    ).catch(() => 0);
+
+    try {
+      const { data } = await this.http.post(`/threads/messages`, body);
       return parseResponse(data, opts.threadId);
-    }, "sendMessage");
+    } catch (err) {
+      const ax = err as AxiosError;
+      if (ax.response?.status === 500) {
+        console.warn(
+          `[backboard:sendMessage] 500 from /threads/messages — likely streaming ` +
+            `blip. Polling thread for assistant reply or tool_calls…`
+        );
+        const recovered = await this.pollForAssistantReply(
+          opts.threadId,
+          baselineCount
+        );
+        if (recovered) return recovered;
+      }
+      throw err;
+    }
   }
 
   async submitToolOutputs(
     threadId: string,
     toolOutputs: ToolOutput[]
   ): Promise<BackboardMessageResponse> {
-    return this.withRetry(async () => {
-      // POST /threads/tool-outputs — also flat. thread_id in body.
-      const { data } = await this.http.post(`/threads/tool-outputs`, {
-        thread_id: threadId,
-        tool_outputs: toolOutputs.map((o) => ({
-          tool_call_id: o.toolCallId,
-          output:
-            typeof o.output === "string"
-              ? o.output
-              : JSON.stringify(o.output),
-        })),
-      });
+    // Backboard known issue (confirmed via support 2026-05): POST
+    // /threads/tool-outputs accepts the submission server-side but the
+    // streaming response pipeline returns HTTP 500 instead of the
+    // assistant's reply. The run completes in the background — the
+    // assistant's real follow-up message is appended to the thread within
+    // ~1-2s. Recovery: on 500 (or 404 "already submitted" from retries),
+    // poll GET /threads/{id} until a new completed assistant message
+    // appears, then return THAT as the response.
+    //
+    // We bypass withRetry here because pRetry would also attempt the
+    // submit a 2nd time, which then 404s with "already submitted" and
+    // poisons the error trail. Recovery is handled inline.
+    const body = {
+      thread_id: threadId,
+      tool_outputs: toolOutputs.map((o) => ({
+        tool_call_id: o.toolCallId,
+        output:
+          typeof o.output === "string"
+            ? o.output
+            : JSON.stringify(o.output),
+      })),
+    };
+
+    // Snapshot message count BEFORE submit so we can detect new replies.
+    const baselineCount = await this.getThreadMessageCount(threadId).catch(
+      () => 0
+    );
+
+    try {
+      const { data } = await this.http.post(`/threads/tool-outputs`, body);
       return parseResponse(data, threadId);
-    }, "submitToolOutputs");
+    } catch (err) {
+      const ax = err as AxiosError;
+      const status = ax.response?.status;
+      const detail = JSON.stringify(ax.response?.data ?? "");
+      const isStreamingBlip500 = status === 500;
+      const isAlreadySubmitted404 =
+        status === 404 && /already submitted/i.test(detail);
+      if (isStreamingBlip500 || isAlreadySubmitted404) {
+        console.warn(
+          `[backboard:submitToolOutputs] ${status} likely streaming-pipeline ` +
+            `blip — submission may have landed. Polling thread for assistant reply…`
+        );
+        const recovered = await this.pollForAssistantReply(
+          threadId,
+          baselineCount
+        );
+        if (recovered) return recovered;
+      }
+      throw err;
+    }
+  }
+
+  private async getThreadMessageCount(threadId: string): Promise<number> {
+    const { data } = await this.http.get(`/threads/${threadId}`);
+    return Array.isArray(data?.messages) ? data.messages.length : 0;
+  }
+
+  private async pollForAssistantReply(
+    threadId: string,
+    baselineCount: number,
+    opts: { maxMs?: number; intervalMs?: number } = {}
+  ): Promise<BackboardMessageResponse | null> {
+    const maxMs = opts.maxMs ?? 20_000;
+    const intervalMs = opts.intervalMs ?? 1_000;
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      try {
+        const { data } = await this.http.get(`/threads/${threadId}`);
+        const msgs = (data?.messages ?? []) as Array<{
+          role?: string;
+          status?: string;
+          content?: string | null;
+        }>;
+        if (msgs.length <= baselineCount) continue;
+        // Walk from the end for the newest completed assistant reply with
+        // real content (skip the empty REQUIRES_ACTION assistant turn that
+        // preceded the tool call).
+        for (let i = msgs.length - 1; i >= baselineCount; i--) {
+          const m = msgs[i];
+          const isAssistant = m.role === "assistant";
+          const isCompleted =
+            (m.status ?? "").toString().toUpperCase() === "COMPLETED";
+          const text = (m.content ?? "").trim();
+          if (isAssistant && isCompleted && text) {
+            console.info(
+              `[backboard:pollForAssistantReply] recovered reply after ` +
+                `${Date.now() - start}ms (msg index ${i})`
+            );
+            return parseResponse(
+              { status: "COMPLETED", content: text },
+              threadId
+            );
+          }
+        }
+      } catch {
+        // Transient GET failure — keep polling until window elapses.
+      }
+    }
+    console.warn(
+      `[backboard:pollForAssistantReply] no new assistant reply in ${maxMs}ms`
+    );
+    return null;
   }
 
   async uploadDocument(file: Buffer | Blob, name: string, assistantId?: string) {
