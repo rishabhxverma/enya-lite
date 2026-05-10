@@ -9,6 +9,7 @@ import { ActivityNav } from "./activity-nav";
 import { DiagramCard } from "./diagram-card";
 import { QuizQuestion } from "./quiz-question";
 import { useProgressStore } from "@shared/stores/progress-store";
+import { PinataReward } from "@features/reward-pinata/pinata-reward";
 
 interface Props {
   studentId: string;
@@ -23,18 +24,17 @@ export function TextLesson({ studentId, lessonId }: Props) {
   const [correctCount, setCorrectCount] = useState(0);
   const { markActivityComplete, awardXp } = useProgressStore();
 
-  // Mark complete when 2/3 answered correctly + confetti on full streak
+  // Mark complete when 2/3 answered correctly. The piñata reward
+  // component drives its own per-correct hit animation + full-streak
+  // candy burst — see <PinataReward /> mounted below.
   useEffect(() => {
     if (correctCount >= 2 && lesson) {
       markActivityComplete(studentId, `${lessonId}-text`);
       awardXp(studentId, 30);
     }
-    if (correctCount >= 3) {
-      import("canvas-confetti").then((m) => {
-        m.default({ particleCount: 80, spread: 70, origin: { y: 0.65 } });
-      });
-    }
   }, [correctCount, studentId, lessonId, lesson, markActivityComplete, awardXp]);
+
+  const totalQuestions = lesson?.comprehensionQuestions?.length ?? 0;
 
   if (loading || !lesson) {
     return (
@@ -93,6 +93,11 @@ export function TextLesson({ studentId, lessonId }: Props) {
           </div>
         </section>
       </article>
+      <PinataReward
+        total={totalQuestions}
+        correct={correctCount}
+        studentId={studentId}
+      />
     </>
   );
 }

@@ -8,6 +8,7 @@ import type { VideoLessonContent, VideoOverlayQuestion } from "@shared/types";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { QuizQuestion } from "@features/activity-text-lesson/quiz-question";
 import { useProgressStore } from "@shared/stores/progress-store";
+import { PinataReward } from "@features/reward-pinata/pinata-reward";
 
 interface Props {
   studentId: string;
@@ -28,6 +29,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const loading = isLoading && !video;
   const [pending, setPending] = useState<VideoOverlayQuestion | null>(null);
   const [answered, setAnswered] = useState<Set<string>>(new Set());
+  const [correctCount, setCorrectCount] = useState(0);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { markActivityComplete, awardXp } = useProgressStore();
@@ -69,7 +71,11 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const onPauseQuestionResolved = (correct: boolean) => {
     if (!pending) return;
     setAnswered((prev) => new Set(prev).add(pending.question.id));
-    if (correct) awardXp(studentId, 10);
+    if (correct) {
+      awardXp(studentId, 10);
+      // Piñata's per-hit animation watches this counter — see <PinataReward /> below.
+      setCorrectCount((c) => c + 1);
+    }
     // Wait 1.2s for feedback, then close + resume
     setTimeout(() => {
       const player = playerRef.current as
@@ -162,6 +168,11 @@ export function VideoLesson({ studentId, lessonId }: Props) {
           </ul>
         </div>
       </div>
+      <PinataReward
+        total={video.overlayQuestions.length}
+        correct={correctCount}
+        studentId={studentId}
+      />
     </>
   );
 }

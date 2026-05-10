@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import confetti from "canvas-confetti";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { studentService } from "@shared/services/student-service";
 import type { StoryGameNode, StoryChoice } from "@shared/types";
 import { useProgressStore } from "@shared/stores/progress-store";
 import { cn } from "@shared/lib/utils";
+import { PinataReward } from "@features/reward-pinata/pinata-reward";
 
 interface Props {
   studentId: string;
@@ -23,6 +23,10 @@ export function StoryGame({ studentId, lessonId }: Props) {
   );
   const [disabledChoices, setDisabledChoices] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
+  // Piñata tracks per-node correct choices. Story arcs have 3-4 nodes;
+  // we treat the user's first correct choice on each node as one "hit",
+  // and the completion screen as the final hit that triggers the burst.
+  const [correctCount, setCorrectCount] = useState(0);
   const { awardXp, markActivityComplete } = useProgressStore();
 
   useEffect(() => {
@@ -57,6 +61,9 @@ export function StoryGame({ studentId, lessonId }: Props) {
       return;
     }
     awardXp(studentId, 15);
+    // Piñata hit for this correct choice — the component picks it up via
+    // the controlled `correct` prop below and animates accordingly.
+    setCorrectCount((c) => c + 1);
     // Advance: try local map first, then API
     const next =
       allNodes[choice.nextNodeId] ??
@@ -72,14 +79,8 @@ export function StoryGame({ studentId, lessonId }: Props) {
       setCurrent(next ?? current);
       setCompleted(true);
       markActivityComplete(studentId, `${lessonId}-story`);
-      // Confetti
-      setTimeout(() => {
-        confetti({
-          particleCount: 90,
-          spread: 75,
-          origin: { y: 0.6 },
-        });
-      }, 200);
+      // The piñata burst fires automatically when correctCount hits the
+      // node total — no separate confetti call needed.
       return;
     }
     setCurrent(next);
@@ -116,6 +117,11 @@ export function StoryGame({ studentId, lessonId }: Props) {
             <li>✓ You used the word &quot;photosynthesis&quot;</li>
           </ul>
         </div>
+        <PinataReward
+          total={Math.max(correctCount, 1)}
+          correct={correctCount}
+          studentId={studentId}
+        />
       </>
     );
   }
@@ -199,6 +205,11 @@ export function StoryGame({ studentId, lessonId }: Props) {
           )}
         </AnimatePresence>
       </div>
+      <PinataReward
+        total={Math.max(Object.keys(allNodes).length || 3, correctCount + 1)}
+        correct={correctCount}
+        studentId={studentId}
+      />
     </>
   );
 }
