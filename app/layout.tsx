@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Caveat, Orbitron } from "next/font/google";
 import { Toaster } from "sonner";
 import { TopBar } from "@features/role-switcher/top-bar";
+import { HealthBanner } from "@features/health-banner/health-banner";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${caveat.variable} ${orbitron.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <TopBar />
-        <main className="pt-16">{children}</main>
+        <div className="pt-16">
+          <HealthBanner />
+          <main>{children}</main>
+        </div>
         <Toaster position="top-right" richColors />
       </body>
     </html>

@@ -26,30 +26,36 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
   const circumference = 2 * Math.PI * 28;
   const offset = circumference * (1 - score / 100);
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
-        <circle
-          cx="32"
-          cy="32"
-          r="28"
-          className="stroke-muted"
-          strokeWidth="6"
-          fill="none"
-        />
-        <circle
-          cx="32"
-          cy="32"
-          r="28"
-          className={ring}
-          strokeWidth="6"
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className={`-mt-12 text-base font-bold ${text}`}>{score}</div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground -mt-0.5">
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative w-16 h-16">
+        <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90 absolute inset-0">
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            className="stroke-muted"
+            strokeWidth="6"
+            fill="none"
+          />
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            className={ring}
+            strokeWidth="6"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div
+          className={`absolute inset-0 flex items-center justify-center text-base font-bold ${text}`}
+        >
+          {score}
+        </div>
+      </div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground text-center">
         {label}
       </div>
     </div>

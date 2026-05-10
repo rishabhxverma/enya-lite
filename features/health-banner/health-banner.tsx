@@ -47,7 +47,7 @@ export function HealthBanner() {
   if (degraded.length === 0) return null;
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-2 text-sm flex items-center justify-center gap-2">
+    <div className="bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-2 text-sm flex items-center justify-center gap-2">
       <AlertTriangle className="w-4 h-4" aria-hidden />
       <span>
         Some services degraded:{" "}
