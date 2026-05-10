@@ -331,7 +331,7 @@ Pick ${count} pause-points.`;
       threadId: thread.id,
       assistantId,
       content: userMessage,
-      systemPromptAddendum: systemAddendum,
+      systemPrompt: systemAddendum,
       memory: "Off",
       llmProvider: "anthropic",
       modelName: "claude-sonnet-4-5-20250929",

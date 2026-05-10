@@ -1,13 +1,29 @@
 import { NextResponse } from "next/server";
-import { generateStoryImage } from "@shared/lib/openai-image";
+import { z } from "zod";
+import { generateStoryImage } from "@shared/lib/ai/student/story-image";
+
+const BodySchema = z.object({
+  studentId: z.string().default("maya"),
+  sceneDescription: z.string().default("A friendly scene"),
+  theme: z.string().default("fantasy"),
+  fallbackEmoji: z.string().optional(),
+  curatedPath: z.string().optional(),
+});
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 45;
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const raw = await req.json().catch(() => ({}));
+  const parse = BodySchema.safeParse(raw);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parse.error.message },
+      { status: 400 }
+    );
+  }
   const mode = process.env.NEXT_PUBLIC_IMAGE_MODE ?? "auto";
-  const fallbackEmoji = body.fallbackEmoji ?? "🌸🦋☀️🌿";
+  const fallbackEmoji = parse.data.fallbackEmoji ?? "🌟📖🌙✨";
 
   if (mode === "emoji") {
     return NextResponse.json({
@@ -16,32 +32,34 @@ export async function POST(req: Request) {
       source: "emoji-only",
     });
   }
-
-  // Curated mode would look up from manifest; for now we degrade gracefully
   if (mode === "curated") {
     return NextResponse.json({
-      imageUrl: body.curatedPath ?? null,
+      imageUrl: parse.data.curatedPath ?? null,
       fallbackEmoji,
-      source: body.curatedPath ? "curated" : "emoji-only",
+      source: parse.data.curatedPath ? "curated" : "emoji-only",
     });
   }
 
-  // auto: try DALL-E
-  const result = await generateStoryImage({
-    sceneDescription: body.sceneDescription ?? "A garden with butterflies and flowers",
-    theme: body.theme ?? "butterflies",
-  });
-  if (result.url) {
+  try {
+    const result = await generateStoryImage({
+      studentId: parse.data.studentId,
+      sceneDescription: parse.data.sceneDescription,
+      theme: parse.data.theme,
+    });
     return NextResponse.json({
-      imageUrl: result.url,
-      fallbackEmoji,
+      imageUrl: result.imageUrl,
+      fallbackEmoji: result.fallbackEmoji ?? fallbackEmoji,
       source: result.source,
     });
+  } catch (err) {
+    console.warn(
+      `[api:generate-story-image] failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json({
+      imageUrl: null,
+      fallbackEmoji,
+      source: "emoji-only",
+      _stub: true,
+    });
   }
-  return NextResponse.json({
-    imageUrl: null,
-    fallbackEmoji,
-    source: "emoji-only",
-    error: result.error,
-  });
 }

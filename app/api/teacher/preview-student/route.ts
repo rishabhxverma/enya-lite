@@ -1,41 +1,38 @@
 import { NextResponse } from "next/server";
-import {
-  STUB_TEXT_LESSONS,
-  STUB_VIDEO_LESSONS,
-  STUB_STORY_NODE_MAYA,
-  STUB_STORY_NODE_LIAM,
-} from "@shared/lib/stub-content";
-import { getStudentProfile } from "@shared/lib/student-profiles";
+import { z } from "zod";
+import { previewStudentExperience } from "@shared/lib/ai/teacher/preview";
+
+const BodySchema = z.object({
+  studentId: z.string().default("maya"),
+  lessonId: z.string().default("photosynthesis-1"),
+  activityType: z.enum(["text", "video", "voice", "story"]).default("text"),
+  topic: z.string().optional(),
+  learningObjectives: z.array(z.string()).optional(),
+  documentId: z.string().optional(),
+});
+
+export const runtime = "nodejs";
+export const maxDuration = 90;
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const studentId = body.studentId ?? "maya";
-  const lessonId = body.lessonId ?? "photosynthesis-1";
-  const activityType = body.activityType ?? "text";
-  const profile = await getStudentProfile(studentId);
-
-  let preview: unknown = null;
-  if (activityType === "text") {
-    preview =
-      STUB_TEXT_LESSONS[studentId]?.[lessonId] ??
-      STUB_TEXT_LESSONS.maya[lessonId];
-  } else if (activityType === "video") {
-    preview =
-      STUB_VIDEO_LESSONS[studentId]?.[lessonId] ??
-      STUB_VIDEO_LESSONS.maya[lessonId];
-  } else if (activityType === "story") {
-    preview = studentId === "liam" ? STUB_STORY_NODE_LIAM : STUB_STORY_NODE_MAYA;
-  } else {
-    preview = {
-      activitySubtype: "explain-back",
-      objectives: ["Student explains photosynthesis in their own words."],
-      maxDurationSeconds: 300,
-    };
+  const raw = await req.json().catch(() => ({}));
+  const parse = BodySchema.safeParse(raw);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parse.error.message },
+      { status: 400 }
+    );
   }
-
-  return NextResponse.json({
-    preview,
-    narrativeDescription: `For ${profile?.name ?? studentId} (${profile?.ealLevel ?? "Emerging"}), the ${activityType} lesson is themed around ${profile?.interests?.[0] ?? "their interests"} with vocabulary calibrated to their EAL level.`,
-    _stub: true,
-  });
+  try {
+    return NextResponse.json(await previewStudentExperience(parse.data));
+  } catch (err) {
+    console.warn(
+      `[api:preview-student] failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json({
+      preview: null,
+      narrativeDescription: `Preview unavailable for ${parse.data.studentId}.`,
+      _stub: true,
+    });
+  }
 }

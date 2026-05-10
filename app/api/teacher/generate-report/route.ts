@@ -1,23 +1,43 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { generateReport } from "@shared/lib/ai/teacher/report";
+
+const BodySchema = z.object({
+  scope: z.enum(["student", "classroom", "course"]).default("student"),
+  targetId: z.string(),
+  format: z.enum(["summary", "detailed"]).optional(),
+});
+
+export const runtime = "nodejs";
+export const maxDuration = 45;
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  return NextResponse.json({
-    report: {
-      title: `Progress report — ${body.targetId ?? "Maya"}`,
-      sections: [
-        {
-          heading: "Headline insight",
-          bodyMarkdown:
-            "Maya completed 5 of 12 activities this week. Her quiz performance is steady (72% avg) but voice activity time is the lowest in the class.",
-        },
-        {
-          heading: "Recommendations",
-          bodyMarkdown:
-            "1. Adjust voice activity difficulty.\n2. Pair Maya with a buddy for the next story game.",
-        },
-      ],
-    },
-    _stub: true,
-  });
+  const raw = await req.json().catch(() => ({}));
+  const parse = BodySchema.safeParse(raw);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parse.error.message },
+      { status: 400 }
+    );
+  }
+  try {
+    return NextResponse.json(await generateReport(parse.data));
+  } catch (err) {
+    console.warn(
+      `[api:generate-report] failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json({
+      report: {
+        title: `Report — ${parse.data.targetId}`,
+        sections: [
+          {
+            heading: "Headline insight",
+            bodyMarkdown:
+              "Could not contact LLM. Please retry, or check API status.",
+          },
+        ],
+      },
+      _stub: true,
+    });
+  }
 }

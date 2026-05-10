@@ -1,21 +1,55 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { generateQuizFromContent } from "@shared/lib/ai/teacher/quiz";
+import type { EALLevel } from "@shared/types";
+
+const BodySchema = z.object({
+  contentId: z.string().optional(),
+  documentId: z.string().optional(),
+  questionCount: z.number().int().min(1).max(20).default(5),
+  types: z
+    .array(z.enum(["multiple-choice", "true-false", "fill-blank"]))
+    .optional(),
+  targetEalLevel: z
+    .enum(["Emerging", "Developing", "Proficient", "Extending"])
+    .optional(),
+});
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const count = Math.max(1, Math.min(10, body.questionCount ?? 3));
-  const questions = Array.from({ length: count }, (_, i) => ({
-    id: `gq${i + 1}`,
-    prompt:
-      i === 0
-        ? "What do plants need to make food?"
-        : i === 1
-          ? "What gas do plants release as a byproduct?"
-          : `Sample generated question ${i + 1}`,
-    type: "multiple-choice",
-    options: ["Sun", "Sound", "Plastic", "Iron"],
-    correctAnswerIndex: 0,
-    explanation: "Plants need sunlight to drive photosynthesis.",
-    learningObjectiveId: "lo-1",
-  }));
-  return NextResponse.json({ questions, _stub: true });
+  const raw = await req.json().catch(() => ({}));
+  const parse = BodySchema.safeParse(raw);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parse.error.message },
+      { status: 400 }
+    );
+  }
+  try {
+    const result = await generateQuizFromContent({
+      ...parse.data,
+      targetEalLevel: parse.data.targetEalLevel as EALLevel | undefined,
+    });
+    return NextResponse.json(result);
+  } catch (err) {
+    console.warn(
+      `[api:generate-quiz] failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json({
+      questions: [
+        {
+          id: "gq1",
+          prompt: "What do plants need to make food?",
+          type: "multiple-choice",
+          options: ["Sun", "Sound", "Plastic", "Iron"],
+          correctAnswerIndex: 0,
+          explanation: "Plants need sunlight to drive photosynthesis.",
+          learningObjectiveId: "lo-1",
+        },
+      ],
+      _stub: true,
+    });
+  }
 }

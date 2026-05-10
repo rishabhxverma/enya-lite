@@ -1,69 +1,46 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { submitQuizAnswer } from "@shared/lib/ai/student/quiz-grader";
 
-function levenshtein(a: string, b: string): number {
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
-    new Array(b.length + 1).fill(0)
-  );
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
-      else
-        dp[i][j] =
-          1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    }
-  }
-  return dp[a.length][b.length];
-}
+const BodySchema = z.object({
+  studentId: z.string().default("maya"),
+  lessonId: z.string().default("photosynthesis-1"),
+  questionId: z.string().default("q1"),
+  answer: z.union([z.string(), z.number()]),
+  questionPrompt: z.string().optional(),
+  questionType: z
+    .enum(["multiple-choice", "true-false", "fill-blank"])
+    .optional(),
+  correctAnswer: z.union([z.string(), z.number()]).optional(),
+  correctAnswerIndex: z.number().int().optional(),
+  options: z.array(z.string()).optional(),
+  explanation: z.string().optional(),
+});
 
-interface SubmitBody {
-  studentId?: string;
-  lessonId?: string;
-  questionId?: string;
-  questionType?: "multiple-choice" | "true-false" | "fill-blank";
-  answer?: string | number;
-  correctAnswer?: string | number;
-  correctAnswerIndex?: number;
-  explanation?: string;
-}
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as SubmitBody;
-  let correct = false;
-  switch (body.questionType) {
-    case "multiple-choice": {
-      correct =
-        typeof body.answer === "number" &&
-        body.answer === body.correctAnswerIndex;
-      break;
-    }
-    case "true-false": {
-      const a = String(body.answer ?? "").toLowerCase();
-      const c = String(body.correctAnswer ?? "").toLowerCase();
-      correct = a === c;
-      break;
-    }
-    case "fill-blank": {
-      const a = String(body.answer ?? "")
-        .trim()
-        .toLowerCase();
-      const c = String(body.correctAnswer ?? "")
-        .trim()
-        .toLowerCase();
-      correct = a === c || levenshtein(a, c) <= 2;
-      break;
-    }
-    default:
-      correct = body.answer === body.correctAnswer;
+  const raw = await req.json().catch(() => ({}));
+  const parse = BodySchema.safeParse(raw);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parse.error.message },
+      { status: 400 }
+    );
   }
-
-  return NextResponse.json({
-    correct,
-    feedback: correct
-      ? "Yes! Great work."
-      : body.explanation ?? "Almost! Read again carefully and try once more.",
-    pointsEarned: correct ? 10 : 0,
-    explanation: body.explanation ?? "",
-  });
+  try {
+    return NextResponse.json(await submitQuizAnswer(parse.data));
+  } catch (err) {
+    console.warn(
+      `[api:submit-quiz-answer] failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json({
+      correct: false,
+      feedback:
+        parse.data.explanation ?? "Could not grade the answer right now.",
+      pointsEarned: 0,
+      _stub: true,
+    });
+  }
 }

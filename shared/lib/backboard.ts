@@ -17,8 +17,36 @@ export interface SendMessageOptions {
   memory?: MemoryMode;
   llmProvider?: "openai" | "anthropic" | "google";
   modelName?: string;
-  systemPromptAddendum?: string;
-  responseFormat?: "text" | "json";
+  // Full per-turn system prompt override. When set, replaces the assistant's
+  // default system prompt for THIS turn only — used by analytical handlers
+  // (audit, course outline, etc.) to inject a tightly-scoped task brief.
+  // Maps to Backboard's `system_prompt` body field.
+  systemPrompt?: string;
+  // Request structured JSON output. Maps to Backboard's `json_output`. Per
+  // docs: silently ignored when documents (RAG) / web_search / tools are
+  // active on the message — for those cases we instruct via systemPrompt
+  // and parse JSON-from-text on the caller side.
+  jsonOutput?: boolean;
+}
+
+/** One-shot structured call against an assistant (no thread chaining). */
+export interface RunStructuredCallOptions<T> {
+  assistantId: string;
+  systemPrompt: string;
+  content: string;
+  llmProvider?: SendMessageOptions["llmProvider"];
+  modelName?: string;
+  // When true, sends `json_output: true`. Caller is responsible for knowing
+  // whether this is compatible with the message (i.e. no RAG/tools/web_search).
+  jsonOutput?: boolean;
+  // Optional thread to reuse for context retention. Omit to use the assistant's
+  // default ephemeral thread (Backboard auto-creates one).
+  threadId?: string;
+  // Validator/transformer applied to the parsed JSON. Throws on invalid.
+  parser: (raw: unknown) => T;
+  // Memory mode for this call. Default "Readonly" — analytical calls should
+  // see student/course memory but NOT bloat memory with one-off generations.
+  memory?: MemoryMode;
 }
 
 export interface BackboardToolCall {
@@ -44,6 +72,22 @@ export interface ToolOutput {
 export type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
 export type ToolHandlerMap = Record<string, ToolHandler>;
 
+export interface DocumentStatus {
+  documentId: string;
+  filename?: string;
+  status: "pending" | "processing" | "indexed" | "error";
+  statusMessage?: string;
+  chunkCount?: number;
+  totalTokens?: number;
+}
+
+export interface MemoryEntry {
+  memoryId: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  score?: number;
+}
+
 export interface BackboardClient {
   // Threads are nested under an assistant in Backboard's API — every thread
   // is bound to one assistant at creation time.
@@ -58,6 +102,29 @@ export interface BackboardClient {
     name: string,
     assistantId?: string
   ): Promise<{ id: string }>;
+  getDocumentStatus(documentId: string): Promise<DocumentStatus>;
+  /** Poll until status === 'indexed' or 'error', or maxMs elapses. */
+  waitForDocumentIndexed(
+    documentId: string,
+    opts?: { maxMs?: number; intervalMs?: number }
+  ): Promise<DocumentStatus>;
+  /** POST /assistants/{id}/memories — write a fact. */
+  addMemory(
+    assistantId: string,
+    content: string,
+    metadata?: Record<string, unknown>
+  ): Promise<{ memoryId: string }>;
+  /** POST /assistants/{id}/memories/search — semantic search. */
+  searchMemories(
+    assistantId: string,
+    query: string,
+    limit?: number
+  ): Promise<MemoryEntry[]>;
+  /** GET /assistants/{id}/memories — list all (paginated). */
+  listMemories(
+    assistantId: string,
+    opts?: { page?: number; pageSize?: number }
+  ): Promise<{ memories: MemoryEntry[]; totalCount: number }>;
   runToolLoop(
     opts: SendMessageOptions,
     handlers: ToolHandlerMap,
@@ -66,6 +133,12 @@ export interface BackboardClient {
     final: BackboardMessageResponse;
     toolResults: { toolName: string; args: unknown; output: unknown }[];
   }>;
+  /**
+   * One-shot structured call against an assistant — used by analytical
+   * tool handlers that want JSON back from a side-thread without polluting
+   * the user-facing chat thread. Spawns an ephemeral thread per call.
+   */
+  runStructuredCall<T>(opts: RunStructuredCallOptions<T>): Promise<T>;
 }
 
 interface BackboardConfig {
@@ -142,16 +215,27 @@ class BackboardImpl implements BackboardClient {
     // message and assistant reply both land server-side, but the response
     // stream returns HTTP 500. We snapshot the thread length before the
     // POST so we can recover by polling for the new assistant reply.
-    const body = {
+    const body: Record<string, unknown> = {
       thread_id: opts.threadId,
       content: opts.content,
       tools: opts.tools,
       memory: opts.memory ?? "Auto",
       llm_provider: opts.llmProvider,
       model_name: opts.modelName,
-      system_addendum: opts.systemPromptAddendum,
-      response_format: opts.responseFormat,
+      // Per docs: `system_prompt` is the per-turn override (not
+      // `system_addendum`, which is not a real field). When omitted the
+      // assistant's stored description applies.
+      system_prompt: opts.systemPrompt,
+      // Per docs: `json_output` (not `response_format`). Also: docs warn
+      // it's silently ignored when tools/RAG/web_search are active on the
+      // turn — analytical callers handle that by instructing JSON shape
+      // in the systemPrompt and parsing JSON-from-text downstream.
+      json_output: opts.jsonOutput,
     };
+    // Strip undefined keys so we don't send them as JSON `null`.
+    for (const k of Object.keys(body)) {
+      if (body[k] === undefined) delete body[k];
+    }
 
     const baselineCount = await this.getThreadMessageCount(
       opts.threadId
@@ -331,6 +415,141 @@ class BackboardImpl implements BackboardClient {
     return null;
   }
 
+  async getDocumentStatus(documentId: string): Promise<DocumentStatus> {
+    return this.withRetry(async () => {
+      const { data } = await this.http.get(`/documents/${documentId}/status`);
+      return {
+        documentId: data.document_id ?? documentId,
+        filename: data.filename,
+        status: ((data.status ?? "pending") as string).toLowerCase() as DocumentStatus["status"],
+        statusMessage: data.status_message,
+        chunkCount: data.chunk_count,
+        totalTokens: data.total_tokens,
+      };
+    }, "getDocumentStatus");
+  }
+
+  async waitForDocumentIndexed(
+    documentId: string,
+    opts: { maxMs?: number; intervalMs?: number } = {}
+  ): Promise<DocumentStatus> {
+    const maxMs = opts.maxMs ?? 30_000;
+    const intervalMs = opts.intervalMs ?? 1_500;
+    const start = Date.now();
+    let last: DocumentStatus = {
+      documentId,
+      status: "pending",
+    };
+    while (Date.now() - start < maxMs) {
+      try {
+        last = await this.getDocumentStatus(documentId);
+        if (last.status === "indexed" || last.status === "error") return last;
+      } catch (err) {
+        // Transient errors (e.g. 404 right after upload) are normal — keep polling.
+        console.warn(
+          `[backboard:waitForDocumentIndexed] poll error for ${documentId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    console.warn(
+      `[backboard:waitForDocumentIndexed] timed out after ${maxMs}ms for ${documentId} (last status: ${last.status})`
+    );
+    return last;
+  }
+
+  async addMemory(
+    assistantId: string,
+    content: string,
+    metadata?: Record<string, unknown>
+  ): Promise<{ memoryId: string }> {
+    return this.withRetry(async () => {
+      const { data } = await this.http.post(
+        `/assistants/${assistantId}/memories`,
+        { content, metadata }
+      );
+      return {
+        memoryId: data.memory_id ?? data.id ?? data.memoryId,
+      };
+    }, "addMemory");
+  }
+
+  async searchMemories(
+    assistantId: string,
+    query: string,
+    limit = 10
+  ): Promise<MemoryEntry[]> {
+    return this.withRetry(async () => {
+      const { data } = await this.http.post(
+        `/assistants/${assistantId}/memories/search`,
+        { query, limit }
+      );
+      const list = (data.memories ?? data.results ?? []) as Array<
+        Record<string, unknown>
+      >;
+      return list.map((m) => ({
+        memoryId: (m.memory_id ?? m.id ?? "") as string,
+        content: (m.content ?? "") as string,
+        metadata: (m.metadata ?? {}) as Record<string, unknown>,
+        score: typeof m.score === "number" ? m.score : undefined,
+      }));
+    }, "searchMemories");
+  }
+
+  async listMemories(
+    assistantId: string,
+    opts: { page?: number; pageSize?: number } = {}
+  ): Promise<{ memories: MemoryEntry[]; totalCount: number }> {
+    return this.withRetry(async () => {
+      const params: Record<string, number> = {};
+      if (opts.page) params.page = opts.page;
+      if (opts.pageSize) params.page_size = opts.pageSize;
+      const { data } = await this.http.get(
+        `/assistants/${assistantId}/memories`,
+        { params }
+      );
+      const list = (data.memories ?? []) as Array<Record<string, unknown>>;
+      return {
+        memories: list.map((m) => ({
+          memoryId: (m.memory_id ?? m.id ?? "") as string,
+          content: (m.content ?? "") as string,
+          metadata: (m.metadata ?? {}) as Record<string, unknown>,
+        })),
+        totalCount: (data.total_count as number) ?? list.length,
+      };
+    }, "listMemories");
+  }
+
+  async runStructuredCall<T>(opts: RunStructuredCallOptions<T>): Promise<T> {
+    // Spawn a fresh ephemeral thread so this call doesn't pollute any
+    // user-facing chat thread. Reuse one if the caller passed it.
+    const threadId = opts.threadId ?? (await this.createThread(opts.assistantId)).id;
+    // Pass `tools: []` explicitly. The assistant has the master tool set
+    // configured at assistant level; without an empty override the model
+    // tries to call them and we get back REQUIRES_ACTION instead of JSON.
+    // Empty array disables tools just for this turn.
+    const response = await this.sendMessage({
+      threadId,
+      assistantId: opts.assistantId,
+      content: opts.content,
+      systemPrompt: opts.systemPrompt,
+      llmProvider: opts.llmProvider,
+      modelName: opts.modelName,
+      jsonOutput: opts.jsonOutput,
+      memory: opts.memory ?? "Readonly",
+      tools: [],
+    });
+    if (response.status !== "completed") {
+      throw new Error(
+        `[backboard:runStructuredCall] unexpected status '${response.status}' (expected JSON-only completion)`
+      );
+    }
+    const raw = extractJsonFromText(response.content);
+    return opts.parser(raw);
+  }
+
   async uploadDocument(file: Buffer | Blob, name: string, assistantId?: string) {
     return this.withRetry(async () => {
       const formData = new FormData();
@@ -438,6 +657,56 @@ class BackboardImpl implements BackboardClient {
   }
 }
 
+/**
+ * Pull a JSON object out of a model reply. Tolerates raw JSON, ```json fences,
+ * untagged ``` fences, and a single JSON object embedded in prose. Throws if
+ * no parseable object is found — caller should catch + fall back.
+ */
+export function extractJsonFromText(text: string): unknown {
+  const trimmed = (text ?? "").trim();
+  if (!trimmed) throw new Error("[extractJsonFromText] empty model reply");
+
+  // 1. Try raw parse.
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    /* fall through */
+  }
+
+  // 2. Try a ```json fence (or untagged ``` fence).
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) {
+    try {
+      return JSON.parse(fenced[1]);
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // 3. Greedy first-{ to last-} (or [ to ]) — handles prose wrappers.
+  const firstBrace = Math.min(
+    ...["{", "["]
+      .map((c) => trimmed.indexOf(c))
+      .filter((i) => i >= 0)
+  );
+  if (Number.isFinite(firstBrace)) {
+    const open = trimmed[firstBrace];
+    const close = open === "{" ? "}" : "]";
+    const lastClose = trimmed.lastIndexOf(close);
+    if (lastClose > firstBrace) {
+      const slice = trimmed.slice(firstBrace, lastClose + 1);
+      try {
+        return JSON.parse(slice);
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+  throw new Error(
+    `[extractJsonFromText] no parseable JSON in reply (first 120 chars: ${trimmed.slice(0, 120)})`
+  );
+}
+
 function parseResponse(
   data: unknown,
   threadId: string
@@ -523,7 +792,7 @@ export function getBackboardClient(): BackboardClient {
 }
 
 class StubBackboardClient implements BackboardClient {
-  private failPath() {
+  private failPath(): never {
     throw new Error(
       "BACKBOARD_API_KEY missing — provide it in .env.local before invoking the live Backboard client."
     );
@@ -533,18 +802,33 @@ class StubBackboardClient implements BackboardClient {
     return { id: `stub_thread_${Date.now()}` };
   }
   async sendMessage(): Promise<BackboardMessageResponse> {
-    this.failPath();
-    return null as never;
+    return this.failPath();
   }
   async submitToolOutputs(): Promise<BackboardMessageResponse> {
-    this.failPath();
-    return null as never;
+    return this.failPath();
   }
   async uploadDocument() {
     return { id: `stub_doc_${Date.now()}` };
   }
-  async runToolLoop() {
-    this.failPath();
-    return null as never;
+  async getDocumentStatus(documentId: string): Promise<DocumentStatus> {
+    return { documentId, status: "indexed" };
+  }
+  async waitForDocumentIndexed(documentId: string): Promise<DocumentStatus> {
+    return { documentId, status: "indexed" };
+  }
+  async addMemory(): Promise<{ memoryId: string }> {
+    return { memoryId: `stub_mem_${Date.now()}` };
+  }
+  async searchMemories(): Promise<MemoryEntry[]> {
+    return [];
+  }
+  async listMemories(): Promise<{ memories: MemoryEntry[]; totalCount: number }> {
+    return { memories: [], totalCount: 0 };
+  }
+  async runToolLoop(): ReturnType<BackboardClient["runToolLoop"]> {
+    return this.failPath();
+  }
+  async runStructuredCall<T>(): Promise<T> {
+    return this.failPath();
   }
 }
