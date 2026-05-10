@@ -56,6 +56,16 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
   const liveActiveRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tracks live-session start timestamp so onDisconnect can distinguish a
+  // legitimate end from an immediate-rejection close (1008 from ElevenLabs
+  // when the agent's dashboard doesn't whitelist a sent override field).
+  const liveStartedAtRef = useRef(0);
+  // Mirrors `transcript.length` so onDisconnect can read it without a stale
+  // closure. Updated in the message handler + reset in `start`.
+  const transcriptLenRef = useRef(0);
+  // The session payload we just fetched, kept around so onDisconnect can
+  // call runSimulated(session) if the live path was rejected.
+  const pendingSessionRef = useRef<VoiceSessionPayload | null>(null);
   const { hydrate, hydrated, getById } = useStudentStore();
   const { awardXp, markActivityComplete } = useProgressStore();
   const profile = getById(studentId);
@@ -77,6 +87,7 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
     onMessage: ({ message, source }) => {
       if (!message) return;
       const who = source === "user" ? "student" : "tutor";
+      transcriptLenRef.current += 1;
       setTranscript((t) => [...t, { who, text: message }]);
       // Mission progress heuristic: when the tutor speaks right after a
       // student turn, we treat that as "task completed". Caps at task
@@ -92,13 +103,29 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
     onError: (msg, ctx) => {
       console.error("[voice-activity] elevenlabs error", msg, ctx);
     },
-    onDisconnect: () => {
-      if (liveActiveRef.current) {
-        liveActiveRef.current = false;
-        setState("ended");
-        awardXp(studentId, 25);
-        markActivityComplete(studentId, `${lessonId}-voice`);
+    onDisconnect: (details?: unknown) => {
+      if (!liveActiveRef.current) return;
+      liveActiveRef.current = false;
+      // ElevenLabs closes the websocket with code 1008 when an override the
+      // agent's dashboard hasn't whitelisted is sent (e.g. first_message,
+      // language, voice_id). When that happens we never had a conversation,
+      // so falling through to "ended" + awarding XP is misleading. Detect
+      // the early-close case (no transcript yet AND it disconnected within
+      // ~3s of starting) and fall back to the simulated transcript instead.
+      const elapsed = Date.now() - liveStartedAtRef.current;
+      const hadAnyTurns = transcriptLenRef.current > 0;
+      const looksRejected = elapsed < 3000 && !hadAnyTurns;
+      console.warn("[voice-activity] disconnected", { elapsed, hadAnyTurns, details });
+      if (looksRejected && pendingSessionRef.current) {
+        // Run the scripted fallback so the demo flow still completes.
+        const session = pendingSessionRef.current;
+        pendingSessionRef.current = null;
+        runSimulated(session);
+        return;
       }
+      setState("ended");
+      awardXp(studentId, 25);
+      markActivityComplete(studentId, `${lessonId}-voice`);
     },
   });
 
@@ -157,6 +184,9 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
     setTranscript([]);
     setMissionCompleted(0);
     lastTurnRef.current = null;
+    transcriptLenRef.current = 0;
+    pendingSessionRef.current = null;
+    liveStartedAtRef.current = 0;
     try {
       const session = (await studentService.getVoiceSession({
         studentId,
@@ -169,6 +199,10 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
       // indicator below.
       if (session.mission?.tasks) setMissionTasks(session.mission.tasks);
 
+      // Stash the session payload so onDisconnect can run the simulated
+      // fallback if the live websocket gets rejected on connect.
+      pendingSessionRef.current = session;
+
       const useSimulated =
         !session.signedUrl || session.voiceMode === "simulated";
 
@@ -177,23 +211,37 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
         return;
       }
 
-      // Live path. Persona overrides flow through `overrides.agent.prompt`
-      // — that's how ElevenLabs lets you swap the system prompt per call
-      // without redefining the agent. (Requires "first message" + "system
-      // prompt" overrides to be enabled on the agent in the EL dashboard.)
-      // We also override `firstMessage` with the Mission's opening line so
-      // the agent enters in-character without the dashboard's default greeting.
+      // Live path. ElevenLabs disconnects the websocket with close code
+      // 1008 the moment a per-conversation override is sent that the
+      // agent's dashboard hasn't whitelisted ("Override for field 'X' is
+      // not allowed by config."). For the hackathon demo we send NO
+      // overrides — the agent uses whatever system prompt and first
+      // message are stored in its dashboard config. The student-facing
+      // result: a live voice conversation runs, but it follows the
+      // dashboard's generic prompt instead of the per-student Mission.
+      //
+      // To unlock per-student personalization in the LIVE path:
+      //   1. Open the agent at https://elevenlabs.io/app/conversational-ai
+      //   2. Settings → Conversation overrides → toggle "System prompt"
+      //      and "First message" to allowed.
+      //   3. Re-add the `overrides.agent.prompt` and `firstMessage` fields
+      //      below.
+      // Until then, the simulated fallback (which IS Mission-aware) runs
+      // when the override config rejects the connection.
       try {
         liveActiveRef.current = true;
-        await conversation.startSession({
-          signedUrl: session.signedUrl as string,
-          overrides: {
-            agent: {
-              prompt: { prompt: session.agentPersonaPrompt },
-              firstMessage: session.mission?.openingLine,
-            },
-          },
-        } as Parameters<typeof conversation.startSession>[0]);
+        liveStartedAtRef.current = Date.now();
+        const startArgs = process.env.NEXT_PUBLIC_VOICE_OVERRIDES_ALLOWED === "true"
+          ? {
+              signedUrl: session.signedUrl as string,
+              overrides: {
+                agent: { prompt: { prompt: session.agentPersonaPrompt } },
+              },
+            }
+          : { signedUrl: session.signedUrl as string };
+        await conversation.startSession(
+          startArgs as Parameters<typeof conversation.startSession>[0]
+        );
         // status/isSpeaking effect above will drive the UI from here.
       } catch (sdkErr) {
         console.error(
