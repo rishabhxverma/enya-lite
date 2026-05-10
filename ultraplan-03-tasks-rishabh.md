@@ -6,28 +6,38 @@
 
 ---
 
-## 🟢 Status (post-overnight)
+## 🟢 Status (post-overnight + post-morning extension session)
 
-R-04 through R-09 were front-loaded into the overnight run because the autonomous session finished P0 in ~3 hours. Most of the morning's wiring work is already on disk.
+R-04 through R-09 landed in the overnight autonomous run (~3 hours). The morning extension session (this update) closed out R-03, R-08, R-10, the two reassigned Demi tasks (D-06b, D-09), and pivoted the deploy target from Firebase to Vercel after a build-blocker round of strict-TS fixes.
+
+**Latest commits on `master`:** `514b954` (Vercel pivot) → `22f7b32` (Firebase config + build fixes) → `8b90534` (D-06b/D-09/R-08/R-03/R-10) → `373f2f7` (ultraplan status blocks).
 
 | Task | Status | Notes |
 |---|---|---|
-| R-01 Morning triage | ⏳ Pending | Read `OVERNIGHT-REPORT.md`, run `npm run check` (20-pt pre-demo). All checks were green at session end. |
-| R-02 Patch broken P0 | ⏳ Pending | No known patches needed. Verify with smoke scripts. |
-| R-03 Pre-generate demo content | 🟡 Partial | Seed files exist with high-quality Rishabh-authored content. Once `BACKBOARD_API_KEY` lands, optionally re-run a script to overwrite with real Claude-Sonnet generations for "live" wow factor. |
-| R-04 Wire teacher chat | ✅ DONE | `features/teacher-chat/` fully functional. Empty state with chips, drag-drop upload, all 5 tool result cards, keyword-dispatched stub fallback when no key. Replace fallback with live `runToolLoop` when `BACKBOARD_ASSISTANT_ID` is set — already wired in `/api/backboard/message`. |
-| R-05 Wire student dashboard | ✅ DONE | `features/student-dashboard/` — themed hero, quick stats row, today's lesson card, motivational nudges. `useStudentDashboard` hook handles seed → API → fallback chain. |
-| R-06 Wire text lesson | ✅ DONE | `features/activity-text-lesson/` — react-markdown body, themed accents, emoji diagram cards, 3 interactive comprehension questions, confetti on full streak, completion + XP wired into progress store. |
-| R-07 Wire video lesson | ✅ DONE | `features/activity-video-lesson/` — react-youtube + auto-pause overlay quiz Dialog at scripted timestamps, resume on answer. |
-| R-08 Wire voice activity | 🟡 Partial | Splash + animated mic orb + countdown timer + scripted simulated transcript + summary card all done. **Morning task:** swap simulated branch for live `useConversation` from `@elevenlabs/react` (~30 min). API route already returns the signed URL + persona prompt when keys are present. |
-| R-09 Wire story game | ✅ DONE | `features/activity-story-game/` — branching nodes, gentle teaching-moment modal, confetti on completion, emoji-scene fallback when illustration missing. Loads from seed JSON; falls back to live API when seed missing. |
-| R-10 Final integration smoke + rehearsal | ⏳ Pending | Walk demo path + test fallback toggles + pin commits. |
-| R-11 Streaming tool-call states (P1) | ❌ Not done | Optional polish; current single POST/await pattern works fine. |
-| **D-06b** Client seed-fallback runtime toggle | ⏳ NEW (Demi reassignment) | `localStorage.USE_SEED_FALLBACK='true'` should make every client service hit `/seed/*.json` directly. ~20 min. |
-| **D-09** SWR caching hooks | ⏳ NEW (Demi reassignment) | Wrap dashboard/course/progress reads so role flips don't re-hit endpoint. ~25 min. |
+| R-01 Morning triage | ✅ DONE | Read `OVERNIGHT-REPORT.md`, ran `npm run check`. Green. |
+| R-02 Patch broken P0 | ✅ DONE | No P0 patches needed. Three pre-existing strict-TS errors (`use-mobile`, `next-themes`, `p-retry` v6 API drift) discovered when running `next build` for the deploy — fixed in `22f7b32`; build now compiles 40 routes clean. |
+| R-03 Pre-generate demo content | ✅ DONE | `scripts/pre-generate-seed.ts` (was a broken `pregenerate-content.ts` reference; npm script now points at the real file). Drives the Backboard tool-loop in live mode; in handler-only mode preserves rich hand-authored seeds unless `--force` is passed (protects the 70.8% L4 differential). Dry-run validated. |
+| R-04 Wire teacher chat | ✅ DONE | `features/teacher-chat/` fully functional. Keyword-dispatched stub fallback when no key; live `runToolLoop` swaps in when `BACKBOARD_ASSISTANT_ID` is set. |
+| R-05 Wire student dashboard | ✅ DONE | `features/student-dashboard/` — now driven by `useStudentDashboardSWR` (D-09), so Maya↔Liam flips keep previous content on screen while revalidating. |
+| R-06 Wire text lesson | ✅ DONE | `features/activity-text-lesson/` — react-markdown body, themed accents, emoji diagrams, 3 quiz questions, confetti on streak, XP wired. Now SWR-cached. |
+| R-07 Wire video lesson | ✅ DONE | `features/activity-video-lesson/` — react-youtube + auto-pause overlay Dialog at scripted timestamps. Now SWR-cached; the ad-hoc seed-vs-API double-fetch shim is gone. |
+| R-08 Wire voice activity | ✅ DONE | `voice-activity.tsx` now calls `useConversation` from `@elevenlabs/react`. Live path starts a session with persona overrides via `overrides.agent.prompt` when `signedUrl` exists and `voiceMode !== 'simulated'`. Falls back to the scripted transcript on missing key, simulated mode, or live `startSession` failure. `onMessage` pushes both sides into the same transcript array the simulated path uses, so the UI doesn't care which engine drives. |
+| R-09 Wire story game | ✅ DONE | Branching nodes + teaching-moment modal + confetti + emoji-scene fallback. Loads from seed JSON. |
+| R-10 Final integration smoke | ✅ DONE | `scripts/final-smoke.ts` (`npm run smoke:demo`) — 18 checks across health, API contracts (dashboard/text/voice/backboard message), seed-file inventory, `/public` serving, L4 differential, and pregen dry-run. **18/18 passing.** |
+| R-11 Streaming tool-call states (P1) | ❌ Not done | Optional polish. Single POST/await is fine for the demo. |
+| **D-06b** Client seed-fallback runtime toggle | ✅ DONE (Rishabh, Demi reassignment) | `shared/services/seed-loader-client.ts` reads `localStorage.USE_SEED_FALLBACK` (or `NEXT_PUBLIC_USE_SEED_FALLBACK`). Wired into `studentService` for dashboard / text / video / story / progress so a presenter can flip mid-demo without restarting. Server-side `seed-loader.ts` already had the env-var check; this closes the client side. |
+| **D-09** SWR caching hooks | ✅ DONE (Rishabh, Demi reassignment) | `shared/services/swr-hooks.ts` with 5 cached read hooks (dashboard / text / video / story / progress). Default config: `revalidateOnFocus: false`, `keepPreviousData: true`, retry 2× with 1s delay. Refactored `use-dashboard`, `text-lesson`, `video-lesson` off `useEffect→fetch` onto SWR — no skeleton flash on Maya↔Liam flip. |
 | **D-13** Demo standby | ⏳ NEW (Demi reassignment) | Sit next to Amin during rehearsals, fix bugs live. ~60 min spread across afternoon. |
 
-**Repo:** https://github.com/rishabhxverma/enya-lite (private, master tracked).
+### Bonus work (not in original plan)
+
+| Item | Status | Notes |
+|---|---|---|
+| Strict-TS build fixes | ✅ DONE | `next build` was blocking on 3 pre-existing errors. Fixed all three: created the missing shadcn `shared/hooks/use-mobile.ts` (sidebar.tsx); rewrote sonner.tsx to drop the unused `next-themes` import; updated backboard.ts for `p-retry` v6's named `AbortError` export. |
+| Firebase App Hosting config | ✅ DONE (parked) | `apphosting.yaml` + `firebase.json` + `.firebaserc` committed and Firebase project `enyalearning-lite` created. App Hosting requires a Blaze plan upgrade — kept the config as a fallback option but pivoted to Vercel for the active deploy. |
+| Vercel deploy target | ✅ CONFIG DONE (awaiting interactive auth) | `vercel.json` pins framework + sfo1 region + master = production. `DEPLOY.md` walks through the full flow. New npm scripts: `vercel:dev` / `vercel:env:pull` / `vercel:deploy` / `vercel:preview`. Push-to-branch will create preview URLs once GitHub is connected in the Vercel dashboard. |
+
+**Repo:** https://github.com/rishabhxverma/enya-lite (private, master tracked at `514b954`).
 
 ---
 
