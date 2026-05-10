@@ -231,11 +231,21 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
       try {
         liveActiveRef.current = true;
         liveStartedAtRef.current = Date.now();
+        // When the agent's dashboard has overrides whitelisted, send both
+        // `prompt` (Mission system prompt) AND `firstMessage` (Lila/ARIA's
+        // opening line). Without `firstMessage` the agent would still play
+        // its dashboard-stored greeting first ("Hello! How can I help you
+        // today?") before falling into character.
         const startArgs = process.env.NEXT_PUBLIC_VOICE_OVERRIDES_ALLOWED === "true"
           ? {
               signedUrl: session.signedUrl as string,
               overrides: {
-                agent: { prompt: { prompt: session.agentPersonaPrompt } },
+                agent: {
+                  prompt: { prompt: session.agentPersonaPrompt },
+                  ...(session.mission?.openingLine
+                    ? { firstMessage: session.mission.openingLine }
+                    : {}),
+                },
               },
             }
           : { signedUrl: session.signedUrl as string };
