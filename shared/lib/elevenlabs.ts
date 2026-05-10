@@ -37,12 +37,19 @@ End the session by summarizing one thing ${student.name} did well.`;
 export async function getSignedConversationUrl(): Promise<string | null> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const agentId = process.env.ELEVENLABS_AGENT_ID;
+  // ElevenLabs Conversational AI agents can have multiple "branches"
+  // (versions / drafts). When ELEVENLABS_BRANCH_ID is set we pin to it;
+  // otherwise the request resolves to whichever branch the dashboard has
+  // flagged as active.
+  const branchId = process.env.ELEVENLABS_BRANCH_ID;
   if (!apiKey || !agentId) return null;
   try {
+    const params: Record<string, string> = { agent_id: agentId };
+    if (branchId) params.branch_id = branchId;
     const { data } = await axios.get(
       `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url`,
       {
-        params: { agent_id: agentId },
+        params,
         headers: { "xi-api-key": apiKey },
         timeout: 8_000,
       }
