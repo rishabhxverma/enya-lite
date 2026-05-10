@@ -1,0 +1,44 @@
+[
+  {
+    "id": "maya",
+    "name": "Maya Haddad",
+    "avatarUrl": "/seed/avatars/maya.svg",
+    "grade": 3,
+    "ealLevel": "Emerging",
+    "interests": ["butterflies", "art", "drawing", "gardens"],
+    "culturalBackground": "Newcomer from Aleppo, Syria. Arabic is her first language. Lives with mother and grandmother in Vancouver. Quiet observer; expresses herself best through drawings.",
+    "learningGoals": [
+      "Build confidence speaking simple English aloud",
+      "Connect new English words to familiar objects",
+      "Use drawings to support understanding"
+    ],
+    "theme": {
+      "primaryColor": "oklch(0.78 0.15 340)",
+      "accentColor": "oklch(0.85 0.18 50)",
+      "backgroundPattern": "butterflies",
+      "heroImageUrl": "/seed/themes/maya-hero.jpg",
+      "fontPairing": "whimsical"
+    }
+  },
+  {
+    "id": "liam",
+    "name": "Liam Chen-Patel",
+    "avatarUrl": "/seed/avatars/liam.svg",
+    "grade": 6,
+    "ealLevel": "Proficient",
+    "interests": ["space exploration", "robotics", "video games", "building things"],
+    "culturalBackground": "Born in Toronto. Father from Hong Kong, mother from Mumbai. Trilingual at home (English, Cantonese, Hindi). Confident, energetic, competitive learner who loves a challenge.",
+    "learningGoals": [
+      "Use precise scientific vocabulary in writing and speech",
+      "Construct evidence-based arguments",
+      "Connect concepts across science domains"
+    ],
+    "theme": {
+      "primaryColor": "oklch(0.55 0.22 260)",
+      "accentColor": "oklch(0.75 0.18 195)",
+      "backgroundPattern": "starfield",
+      "heroImageUrl": "/seed/themes/liam-hero.jpg",
+      "fontPairing": "futuristic"
+    }
+  }
+]
