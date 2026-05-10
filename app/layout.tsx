@@ -27,7 +27,7 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: "Enya Lite — Personalized AI Tutor",
+  title: "Enya Lite. A Personalized AI Experience",
   description: "L4 personalized learning for K-12 EAL classrooms",
 };
 
