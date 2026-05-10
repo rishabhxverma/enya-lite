@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import YouTube, { type YouTubePlayer, type YouTubeEvent } from "react-youtube";
 import { motion, AnimatePresence } from "motion/react";
 import { useVideoLessonSWR } from "@shared/services/swr-hooks";
+import { STUB_VIDEO_LESSONS } from "@shared/lib/stub-content";
 import type { VideoLessonContent, VideoOverlayQuestion } from "@shared/types";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { QuizQuestion } from "@features/activity-text-lesson/quiz-question";
 import { useProgressStore } from "@shared/stores/progress-store";
 import { PinataReward } from "@features/reward-pinata/pinata-reward";
+import { ThinkingStages, PersonalizingPill } from "./thinking-stages";
 
 interface Props {
   studentId: string;
@@ -16,23 +18,49 @@ interface Props {
 }
 
 export function VideoLesson({ studentId, lessonId }: Props) {
-  // SWR-cached fetch — same student/lesson/youtube combo dedups across remounts.
-  // (Seed file is the source of truth: `student-service` short-circuits to
-  // /seed/lessons-*/photosynthesis-1-video.json under the seed-fallback flag,
-  // and the live API route returns the same shape, so no per-component
-  // post-processing is needed any more.)
-  const { data: video, isLoading } = useVideoLessonSWR(
+  // Optimistic render: stub data ships with the bundle, so we already know the
+  // YouTube ID, title, and a hand-tuned set of overlay questions before any
+  // network call. SWR uses this as fallback so the player shows up in <500ms
+  // (just YouTube's iframe load) while the live API refines pause timestamps
+  // in the background.
+  const stubVideo = useMemo<VideoLessonContent | null>(() => {
+    return (
+      STUB_VIDEO_LESSONS[studentId]?.[lessonId] ??
+      STUB_VIDEO_LESSONS.maya?.[lessonId] ??
+      null
+    );
+  }, [studentId, lessonId]);
+
+  const { data: video, isLoading, isValidating } = useVideoLessonSWR(
     studentId,
     lessonId,
-    "UPBMG5EYydo"
+    "UPBMG5EYydo",
+    [],
+    stubVideo ? { fallbackData: stubVideo } : undefined
   );
-  const loading = isLoading && !video;
+  // True cold load: no stub for this lesson AND fetch hasn't returned.
+  const coldLoading = isLoading && !video;
+  // Warm path: stub gave us the player instantly but SWR is still revalidating
+  // to swap in AI-refined pause timestamps. Show a subtle pill over the video.
+  const refining = !!video && isValidating && video === stubVideo;
   const [pending, setPending] = useState<VideoOverlayQuestion | null>(null);
   const [answered, setAnswered] = useState<Set<string>>(new Set());
   const [correctCount, setCorrectCount] = useState(0);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs mirror state so the 250ms tick reads current values instead of the
+  // closure captured when onPlay first ran — otherwise a stale tick can
+  // re-set `pending` to the just-answered question right after we clear it.
+  const pendingRef = useRef<VideoOverlayQuestion | null>(null);
+  const answeredRef = useRef<Set<string>>(new Set());
   const { markActivityComplete, awardXp } = useProgressStore();
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
+  useEffect(() => {
+    answeredRef.current = answered;
+  }, [answered]);
 
   useEffect(() => {
     return () => {
@@ -47,7 +75,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const onPlay = () => {
     if (tickRef.current) clearInterval(tickRef.current);
     tickRef.current = setInterval(() => {
-      if (!video || pending) return;
+      if (!video || pendingRef.current) return;
       const player = playerRef.current as
         | (YouTubePlayer & { getCurrentTime?: () => number })
         | null;
@@ -55,7 +83,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
       const next = video.overlayQuestions.find(
         (q) =>
           q.pauseAtSeconds <= t &&
-          !answered.has(q.question.id) &&
+          !answeredRef.current.has(q.question.id) &&
           q.pauseAtSeconds + 5 > t
       );
       if (next) {
@@ -97,11 +125,15 @@ export function VideoLesson({ studentId, lessonId }: Props) {
     }
   }, [answered, video, studentId, lessonId, markActivityComplete]);
 
-  if (loading || !video) {
+  if (coldLoading || !video) {
     return (
-      <div className="max-w-4xl mx-auto p-6 animate-pulse">
-        <div className="aspect-video bg-muted rounded-2xl" />
-      </div>
+      <>
+        <ActivityNav studentId={studentId} lessonId={lessonId} />
+        <ThinkingStages
+          studentName={studentId.charAt(0).toUpperCase() + studentId.slice(1)}
+          ready={false}
+        />
+      </>
     );
   }
 
@@ -117,6 +149,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
         </h1>
 
         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 shadow-lg bg-black">
+          <PersonalizingPill visible={refining} />
           <YouTube
             videoId={video.youtubeId}
             opts={{
