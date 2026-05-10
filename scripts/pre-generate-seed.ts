@@ -131,7 +131,7 @@ async function generateForStudent(
   // otherwise the stub client throws on runToolLoop. In handler-only mode
   // we just call the typed handlers directly to re-emit seed JSON.
   const client = liveMode ? getBackboardClient() : null;
-  const thread = liveMode ? await client!.createThread() : null;
+  const thread = liveMode ? await client!.createThread(assistantId) : null;
   console.log(
     `\n→ student=${studentId} ${liveMode ? `thread=${thread!.id}` : "(handler-only)"}`
   );

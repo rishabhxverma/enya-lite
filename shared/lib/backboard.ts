@@ -45,7 +45,9 @@ export type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
 export type ToolHandlerMap = Record<string, ToolHandler>;
 
 export interface BackboardClient {
-  createThread(): Promise<CreateThreadResult>;
+  // Threads are nested under an assistant in Backboard's API — every thread
+  // is bound to one assistant at creation time.
+  createThread(assistantId: string): Promise<CreateThreadResult>;
   sendMessage(opts: SendMessageOptions): Promise<BackboardMessageResponse>;
   submitToolOutputs(
     threadId: string,
@@ -53,7 +55,8 @@ export interface BackboardClient {
   ): Promise<BackboardMessageResponse>;
   uploadDocument(
     file: Buffer | Blob,
-    name: string
+    name: string,
+    assistantId?: string
   ): Promise<{ id: string }>;
   runToolLoop(
     opts: SendMessageOptions,
@@ -75,9 +78,13 @@ class BackboardImpl implements BackboardClient {
 
   constructor(private cfg: BackboardConfig) {
     this.http = axios.create({
-      baseURL: cfg.apiUrl ?? "https://api.backboard.io",
+      // Real Backboard API base URL (the public marketing hostname is
+      // backboard.io, but the actual REST endpoint lives under app.*).
+      baseURL: cfg.apiUrl ?? "https://app.backboard.io/api",
       headers: {
-        Authorization: `Bearer ${cfg.apiKey}`,
+        // Backboard uses an X-API-Key header, not Bearer. Confirmed against
+        // docs.backboard.io/authentication.
+        "X-API-Key": cfg.apiKey,
         "Content-Type": "application/json",
       },
       timeout: 60_000,
@@ -115,10 +122,15 @@ class BackboardImpl implements BackboardClient {
     );
   }
 
-  async createThread(): Promise<CreateThreadResult> {
+  async createThread(assistantId: string): Promise<CreateThreadResult> {
     return this.withRetry(async () => {
-      const { data } = await this.http.post("/v1/threads", {});
-      return { id: data.id ?? data.thread_id ?? data.threadId };
+      // POST /assistants/{assistant_id}/threads — nested resource. Returns
+      // `{ thread_id, ... }`. Empty body is fine; pass {} to satisfy axios.
+      const { data } = await this.http.post(
+        `/assistants/${assistantId}/threads`,
+        {}
+      );
+      return { id: data.thread_id ?? data.id ?? data.threadId };
     }, "createThread");
   }
 
@@ -126,19 +138,18 @@ class BackboardImpl implements BackboardClient {
     opts: SendMessageOptions
   ): Promise<BackboardMessageResponse> {
     return this.withRetry(async () => {
-      const { data } = await this.http.post(
-        `/v1/threads/${opts.threadId}/messages`,
-        {
-          assistant_id: opts.assistantId,
-          content: opts.content,
-          tools: opts.tools,
-          memory: opts.memory ?? "Auto",
-          llm_provider: opts.llmProvider,
-          model_name: opts.modelName,
-          system_addendum: opts.systemPromptAddendum,
-          response_format: opts.responseFormat,
-        }
-      );
+      // POST /threads/messages — flat endpoint, thread_id in body. The
+      // assistant binding is on the thread, not per-message.
+      const { data } = await this.http.post(`/threads/messages`, {
+        thread_id: opts.threadId,
+        content: opts.content,
+        tools: opts.tools,
+        memory: opts.memory ?? "Auto",
+        llm_provider: opts.llmProvider,
+        model_name: opts.modelName,
+        system_addendum: opts.systemPromptAddendum,
+        response_format: opts.responseFormat,
+      });
       return parseResponse(data, opts.threadId);
     }, "sendMessage");
   }
@@ -148,32 +159,44 @@ class BackboardImpl implements BackboardClient {
     toolOutputs: ToolOutput[]
   ): Promise<BackboardMessageResponse> {
     return this.withRetry(async () => {
-      const { data } = await this.http.post(
-        `/v1/threads/${threadId}/tool-outputs`,
-        {
-          tool_outputs: toolOutputs.map((o) => ({
-            tool_call_id: o.toolCallId,
-            output:
-              typeof o.output === "string"
-                ? o.output
-                : JSON.stringify(o.output),
-          })),
-        }
-      );
+      // POST /threads/tool-outputs — also flat. thread_id in body.
+      const { data } = await this.http.post(`/threads/tool-outputs`, {
+        thread_id: threadId,
+        tool_outputs: toolOutputs.map((o) => ({
+          tool_call_id: o.toolCallId,
+          output:
+            typeof o.output === "string"
+              ? o.output
+              : JSON.stringify(o.output),
+        })),
+      });
       return parseResponse(data, threadId);
     }, "submitToolOutputs");
   }
 
-  async uploadDocument(file: Buffer | Blob, name: string) {
+  async uploadDocument(file: Buffer | Blob, name: string, assistantId?: string) {
     return this.withRetry(async () => {
       const formData = new FormData();
       // Node Buffer -> Blob
       const blob =
         file instanceof Blob ? file : new Blob([file as unknown as BlobPart]);
       formData.append("file", blob, name);
-      const { data } = await this.http.post("/v1/documents", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Backboard nests document upload under the assistant. If no assistant
+      // is provided, fall back to env var (so callers that don't yet thread
+      // assistantId still work). The legacy `/documents` flat endpoint
+      // doesn't exist on the real API.
+      const aid = assistantId ?? process.env.BACKBOARD_ASSISTANT_ID;
+      if (!aid)
+        throw new Error(
+          "uploadDocument requires an assistantId (or BACKBOARD_ASSISTANT_ID env)"
+        );
+      const { data } = await this.http.post(
+        `/assistants/${aid}/documents`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       return { id: data.id ?? data.document_id ?? data.documentId };
     }, "uploadDocument");
   }
@@ -312,7 +335,8 @@ class StubBackboardClient implements BackboardClient {
       "BACKBOARD_API_KEY missing — provide it in .env.local before invoking the live Backboard client."
     );
   }
-  async createThread() {
+  async createThread(_assistantId: string) {
+    void _assistantId;
     return { id: `stub_thread_${Date.now()}` };
   }
   async sendMessage(): Promise<BackboardMessageResponse> {
