@@ -146,6 +146,11 @@ interface BackboardConfig {
   apiUrl?: string;
 }
 
+interface ThreadSnapshot {
+  count: number;
+  latestAssistantFingerprint: string | null;
+}
+
 class BackboardImpl implements BackboardClient {
   private http: AxiosInstance;
 
@@ -237,9 +242,10 @@ class BackboardImpl implements BackboardClient {
       if (body[k] === undefined) delete body[k];
     }
 
-    const baselineCount = await this.getThreadMessageCount(
-      opts.threadId
-    ).catch(() => 0);
+    const baseline = await this.getThreadSnapshot(opts.threadId).catch(() => ({
+      count: 0,
+      latestAssistantFingerprint: null,
+    }));
 
     try {
       const { data } = await this.http.post(`/threads/messages`, body);
@@ -251,10 +257,7 @@ class BackboardImpl implements BackboardClient {
           `[backboard:sendMessage] 500 from /threads/messages — likely streaming ` +
             `blip. Polling thread for assistant reply or tool_calls…`
         );
-        const recovered = await this.pollForAssistantReply(
-          opts.threadId,
-          baselineCount
-        );
+        const recovered = await this.pollForAssistantReply(opts.threadId, baseline);
         if (recovered) return recovered;
       }
       throw err;
@@ -289,9 +292,10 @@ class BackboardImpl implements BackboardClient {
     };
 
     // Snapshot message count BEFORE submit so we can detect new replies.
-    const baselineCount = await this.getThreadMessageCount(threadId).catch(
-      () => 0
-    );
+    const baseline = await this.getThreadSnapshot(threadId).catch(() => ({
+      count: 0,
+      latestAssistantFingerprint: null,
+    }));
 
     try {
       const { data } = await this.http.post(`/threads/tool-outputs`, body);
@@ -314,24 +318,77 @@ class BackboardImpl implements BackboardClient {
           `[backboard:submitToolOutputs] ${status} likely streaming-pipeline ` +
             `blip — submission may have landed. Polling thread for assistant reply…`
         );
-        const recovered = await this.pollForAssistantReply(
-          threadId,
-          baselineCount
-        );
+        const recovered = await this.pollForAssistantReply(threadId, baseline);
         if (recovered) return recovered;
       }
       throw err;
     }
   }
 
-  private async getThreadMessageCount(threadId: string): Promise<number> {
+  private assistantFingerprint(message: {
+    status?: string;
+    content?: string | null;
+    tool_calls?: unknown[];
+    requires_action?: { tool_calls?: unknown[] };
+  }): string {
+    const status = (message.status ?? "").toString().toUpperCase();
+    const content = (message.content ?? "").toString().trim().slice(0, 500);
+    const toolCalls = message.tool_calls ?? message.requires_action?.tool_calls ?? [];
+    // Keep the fingerprint bounded and stable: count + shallow shape only.
+    const toolShape = Array.isArray(toolCalls)
+      ? JSON.stringify(
+          toolCalls.map((c) => {
+            const call = c as {
+              id?: string;
+              tool_call_id?: string;
+              name?: string;
+              function?: { name?: string };
+            };
+            return {
+              id: call.id ?? call.tool_call_id ?? "",
+              name: call.name ?? call.function?.name ?? "",
+            };
+          })
+        ).slice(0, 1000)
+      : "";
+    return `${status}|${content}|${toolShape}`;
+  }
+
+  private latestAssistantFingerprint(
+    msgs: Array<{
+      role?: string;
+      status?: string;
+      content?: string | null;
+      tool_calls?: unknown[];
+      requires_action?: { tool_calls?: unknown[] };
+    }>
+  ): string | null {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i]?.role === "assistant") {
+        return this.assistantFingerprint(msgs[i]);
+      }
+    }
+    return null;
+  }
+
+  private async getThreadSnapshot(threadId: string): Promise<ThreadSnapshot> {
     const { data } = await this.http.get(`/threads/${threadId}`);
-    return Array.isArray(data?.messages) ? data.messages.length : 0;
+    const msgs = (data?.messages ?? []) as Array<{
+      role?: string;
+      status?: string;
+      content?: string | null;
+      tool_calls?: unknown[];
+      requires_action?: { tool_calls?: unknown[] };
+    }>;
+    return {
+      count: msgs.length,
+      latestAssistantFingerprint: this.latestAssistantFingerprint(msgs),
+    };
   }
 
   private async pollForAssistantReply(
     threadId: string,
-    baselineCount: number,
+    baseline: ThreadSnapshot,
     opts: { maxMs?: number; intervalMs?: number } = {}
   ): Promise<BackboardMessageResponse | null> {
     const maxMs = opts.maxMs ?? 20_000;
@@ -353,7 +410,13 @@ class BackboardImpl implements BackboardClient {
           tool_calls?: unknown[];
           requires_action?: { tool_calls?: unknown[] };
         }>;
-        if (msgs.length <= baselineCount) continue;
+        const countAdvanced = msgs.length > baseline.count;
+        const latestAssistantChangedInPlace =
+          !countAdvanced &&
+          this.latestAssistantFingerprint(msgs) !==
+            baseline.latestAssistantFingerprint;
+        if (!countAdvanced && !latestAssistantChangedInPlace) continue;
+        const minIndex = countAdvanced ? baseline.count : 0;
         // Walk from the end for the newest recoverable assistant turn. We
         // accept two outcomes:
         //   1. COMPLETED + text  → the model's final reply; return as completed.
@@ -363,7 +426,7 @@ class BackboardImpl implements BackboardClient {
         // The earlier version only handled (1) and silently skipped (2),
         // which is why audit-after-upload turns failed: the streaming-blip
         // 500 hid a perfectly-valid chained tool call.
-        for (let i = msgs.length - 1; i >= baselineCount; i--) {
+        for (let i = msgs.length - 1; i >= minIndex; i--) {
           const m = msgs[i];
           if (m.role !== "assistant") continue;
           const status = (m.status ?? "").toString().toUpperCase();

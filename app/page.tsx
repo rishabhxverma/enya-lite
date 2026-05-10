@@ -18,11 +18,11 @@ export default function HomePage() {
         </Button>
 
         <Button asChild variant="enya_neutral" size="lg">
-          <Link href="/student/maya">Open as Maya 🦋</Link>
+          <Link href="/student/maya/onboarding">Open as Maya 🦋</Link>
         </Button>
 
         <Button asChild variant="enya_neutral" size="lg">
-          <Link href="/student/liam">Open as Liam 🚀</Link>
+          <Link href="/student/liam/onboarding">Open as Liam 🚀</Link>
         </Button>
       </div>
     </div>

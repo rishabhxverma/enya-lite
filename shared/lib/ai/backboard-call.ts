@@ -25,23 +25,24 @@ function client(): BackboardClient {
   return getBackboardClient();
 }
 
-/** Per-task model override matrix from architecture §4.4. */
+const FAST_MODEL = {
+  llmProvider: "google" as const,
+  modelName: "gemini-2.5-flash",
+};
+
+/** Model overrides pinned to fast mode for low-latency UX. */
 export const MODELS = {
-  // Generation: Claude Sonnet 4 — strong on long-form structured output.
+  // Generation also uses fast mode.
   generation: {
-    llmProvider: "anthropic" as const,
-    modelName: "claude-sonnet-4-20250514",
+    ...FAST_MODEL,
   },
-  // Quizzes / structured JSON: GPT-4o — best JSON adherence.
+  // Structured quiz JSON also uses fast mode.
   quizJson: {
-    llmProvider: "openai" as const,
-    modelName: "gpt-4o",
+    ...FAST_MODEL,
   },
-  // Fast chat / lightweight analysis: Gemini 2.5 Flash (Backboard's
-  // current Gemini build — 2.0-flash is not on the platform).
+  // Fast chat / lightweight analysis.
   fastChat: {
-    llmProvider: "google" as const,
-    modelName: "gemini-2.5-flash",
+    ...FAST_MODEL,
   },
 };
 
@@ -59,7 +60,7 @@ export interface CallOpts<T> {
 
 /** Generic typed structured call. */
 export async function callForJson<T>(opts: CallOpts<T>): Promise<T> {
-  const m = opts.model ?? MODELS.generation;
+  const m = opts.model ?? MODELS.fastChat;
   const callOpts: RunStructuredCallOptions<T> = {
     assistantId: assistantId(),
     systemPrompt: opts.systemPrompt,

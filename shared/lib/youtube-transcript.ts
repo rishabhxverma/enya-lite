@@ -333,8 +333,8 @@ Pick ${count} pause-points.`;
       content: userMessage,
       systemPrompt: systemAddendum,
       memory: "Off",
-      llmProvider: "anthropic",
-      modelName: "claude-sonnet-4-5-20250929",
+      llmProvider: "google",
+      modelName: "gemini-2.5-flash",
       tools: [submitTool],
     });
 

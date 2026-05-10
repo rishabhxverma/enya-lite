@@ -34,10 +34,10 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (err) {
-    console.warn(
-      `[api:generate-quiz] failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[api:generate-quiz] failed: ${message}`);
     return NextResponse.json({
+      _error: message,
       questions: [
         {
           id: "gq1",

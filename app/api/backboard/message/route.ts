@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getBackboardClient } from "@shared/lib/backboard";
+import { MODELS } from "@shared/lib/ai/backboard-call";
 import { TEACHER_TOOLS } from "@shared/lib/tools/teacher-tools";
 import { STUDENT_TOOLS } from "@shared/lib/tools/student-tools";
 import { buildTeacherHandlers, buildStudentHandlers } from "@shared/lib/tool-handlers";
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
         content: body.content + attachmentsBlock,
         tools,
         memory: body.role === "teacher" ? "Auto" : "Readonly",
+        llmProvider: MODELS.fastChat.llmProvider,
+        modelName: MODELS.fastChat.modelName,
       },
       handlers
     );
@@ -104,12 +107,14 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[backboard/message] error", err);
+    const fallback = await stubReply(body);
     return NextResponse.json(
       {
-        threadId: body.threadId,
+        threadId: fallback.threadId ?? body.threadId,
         content:
-          "I hit a snag reaching the assistant. Try again in a moment, or use the seed-fallback toggle.",
-        toolResults: [],
+          "(Live assistant unavailable — using local tool fallback.) " +
+          fallback.content,
+        toolResults: fallback.toolResults ?? [],
         error: err instanceof Error ? err.message : String(err),
       },
       { status: 200 }
