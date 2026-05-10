@@ -14,7 +14,11 @@
     "pregenerate": "tsx scripts/pre-generate-seed.ts",
     "demo:l4": "tsx scripts/run-l4-diff.ts",
     "check": "tsx scripts/pre-demo-check.ts",
-    "smoke:demo": "tsx scripts/final-smoke.ts"
+    "smoke:demo": "tsx scripts/final-smoke.ts",
+    "vercel:dev": "vercel dev",
+    "vercel:env:pull": "vercel env pull .env.local",
+    "vercel:deploy": "vercel --prod",
+    "vercel:preview": "vercel"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.5.0",
