@@ -9,7 +9,6 @@ import type { VideoLessonContent, VideoOverlayQuestion } from "@shared/types";
 import { ActivityNav } from "@features/activity-text-lesson/activity-nav";
 import { QuizQuestion } from "@features/activity-text-lesson/quiz-question";
 import { useProgressStore } from "@shared/stores/progress-store";
-import { PinataReward } from "@features/reward-pinata/pinata-reward";
 import { ThinkingStages, PersonalizingPill } from "./thinking-stages";
 
 interface Props {
@@ -31,12 +30,16 @@ export function VideoLesson({ studentId, lessonId }: Props) {
     );
   }, [studentId, lessonId]);
 
-  const { data: video, isLoading, isValidating } = useVideoLessonSWR(
+  const {
+    data: video,
+    isLoading,
+    isValidating,
+  } = useVideoLessonSWR(
     studentId,
     lessonId,
     "UPBMG5EYydo",
     [],
-    stubVideo ? { fallbackData: stubVideo } : undefined
+    stubVideo ? { fallbackData: stubVideo } : undefined,
   );
   // True cold load: no stub for this lesson AND fetch hasn't returned.
   const coldLoading = isLoading && !video;
@@ -45,7 +48,6 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const refining = !!video && isValidating && video === stubVideo;
   const [pending, setPending] = useState<VideoOverlayQuestion | null>(null);
   const [answered, setAnswered] = useState<Set<string>>(new Set());
-  const [correctCount, setCorrectCount] = useState(0);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Refs mirror state so the 250ms tick reads current values instead of the
@@ -84,7 +86,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
         (q) =>
           q.pauseAtSeconds <= t &&
           !answeredRef.current.has(q.question.id) &&
-          q.pauseAtSeconds + 5 > t
+          q.pauseAtSeconds + 5 > t,
       );
       if (next) {
         const player = playerRef.current as
@@ -99,11 +101,7 @@ export function VideoLesson({ studentId, lessonId }: Props) {
   const onPauseQuestionResolved = (correct: boolean) => {
     if (!pending) return;
     setAnswered((prev) => new Set(prev).add(pending.question.id));
-    if (correct) {
-      awardXp(studentId, 10);
-      // Piñata's per-hit animation watches this counter — see <PinataReward /> below.
-      setCorrectCount((c) => c + 1);
-    }
+    if (correct) awardXp(studentId, 10);
     // Wait 1.2s for feedback, then close + resume
     setTimeout(() => {
       const player = playerRef.current as
@@ -201,11 +199,6 @@ export function VideoLesson({ studentId, lessonId }: Props) {
           </ul>
         </div>
       </div>
-      <PinataReward
-        total={video.overlayQuestions.length}
-        correct={correctCount}
-        studentId={studentId}
-      />
     </>
   );
 }
