@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-  <g opacity="0.45" fill="#ec4899">
-    <text x="20" y="40" font-size="22">🦋</text>
-    <text x="120" y="70" font-size="18">🌸</text>
-    <text x="60" y="120" font-size="16">🌿</text>
-    <text x="150" y="160" font-size="22">🦋</text>
-    <text x="30" y="180" font-size="18">🌼</text>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><g fill="#ec4899" opacity=".45"><text x="20" y="40" font-size="22">🦋</text><text x="120" y="70" font-size="18">🌸</text><text x="60" y="120" font-size="16">🌿</text><text x="150" y="160" font-size="22">🦋</text><text x="30" y="180" font-size="18">🌼</text></g></svg>
