@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
-  <defs>
-    <linearGradient id="liamBg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#bfdbfe"/>
-      <stop offset="100%" stop-color="#a5f3fc"/>
-    </linearGradient>
-  </defs>
-  <circle cx="48" cy="48" r="48" fill="url(#liamBg)"/>
-  <text x="50%" y="55%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="700" fill="#1e3a8a">L</text>
-  <text x="50%" y="86%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20">🚀</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><linearGradient id="liamBg" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#bfdbfe"/><stop offset="100%" stop-color="#a5f3fc"/></linearGradient></defs><circle cx="48" cy="48" r="48" fill="url(#liamBg)"/><text x="50%" y="55%" fill="#1e3a8a" font-family="system-ui, sans-serif" font-size="42" font-weight="700" text-anchor="middle">L</text><text x="50%" y="86%" font-family="system-ui, sans-serif" font-size="20" text-anchor="middle">🚀</text></svg>
