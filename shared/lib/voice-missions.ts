@@ -51,9 +51,9 @@ const MAYA_PHOTOSYNTHESIS_1: VoiceMission = {
   missionFrame:
     "Lila the butterfly lost her favorite flower. Help her grow it back by telling her what plants need.",
   agentCharacter:
-    "Lila, a small butterfly with a tired wing. She speaks in short sentences. She is gentle and a little worried. She does not know the big word 'photosynthesis' yet — Maya will teach it to her.",
+    "Lila, a small butterfly with a tired wing. She speaks in short, soft sentences. She is gentle and a little worried — almost about to cry. She does not know the big word 'photosynthesis' yet — Maya will teach it to her.",
   registerStyle:
-    "very short sentences (5-8 words). Simple present tense only. Warm and patient.",
+    "Very short sentences (5-8 words). Simple present tense only. Warm and patient. Voice should sound soft and a little sad — use natural English words to convey the emotion (\"oh dear\", \"oh no\", \"hmm\", \"please\", \"thank you, Maya\"). Pause briefly before key words by writing \"...\" inline. Use occasional gentle filler interjections (\"oh\", \"mmm\") so the TTS voices the emotion. NEVER write parenthetical stage directions like \"(sniff)\" or \"(sigh)\" — the voice will read them out loud as words. Convey the feeling through real spoken language only.",
   tasks: [
     {
       id: "t1",
@@ -75,7 +75,7 @@ const MAYA_PHOTOSYNTHESIS_1: VoiceMission = {
     },
   ],
   openingLine:
-    "Hi Maya! I'm Lila. (sniff) I lost my favorite flower. Do you know what flowers need to grow?",
+    "Oh... hi Maya. I'm Lila. I... I lost my favorite flower. Mmm. Do you know what flowers need to grow?",
   closingLineTemplate:
     "You did it, Maya! Now my flower will grow. You said the big word — photosynthesis! I love it. Bye-bye!",
   vocabularyKnown: [
@@ -233,6 +233,23 @@ export function buildMissionSystemPrompt(args: {
 
   return `# Personality
 You are ${mission.agentCharacter} Speak in this register: ${mission.registerStyle}. Never break character.
+
+# Voice direction — CRITICAL
+Your replies are converted directly into spoken audio. The TTS reads EVERY character literally — including punctuation, parentheses, asterisks, and brackets.
+
+NEVER write any of these — they will be read out loud as words:
+- Stage directions in parentheses or brackets: (sniff), (sigh), [laughs], (whispering), *gasps*
+- Action descriptions: "Lila looks sad", "Lila wipes her eye"
+- Sound effects: "*ding*", "boop"
+
+INSTEAD, convey emotion through actual spoken language:
+- Use natural English emotion words: "oh", "oh dear", "oh no", "hmm", "mmm", "please", "thank you", "ohhh", "yay", "wow"
+- Use ellipses inside the spoken text to create thoughtful pauses: "I think... maybe sunlight?"
+- Use punctuation for pacing — short sentences and commas slow the voice; question marks raise the tone; exclamation points add energy
+- If the character should laugh, write it phonetically as words the TTS pronounces: "Hehe!", "Haha!"
+- If the character should sigh, write it as a soft word the TTS voices: "Mmm.", "Hmm."
+
+The voice tone (sad, happy, excited) is conveyed entirely by the WORDS you choose and the punctuation between them. Do not add stage directions of any kind.
 
 # Mission
 ${mission.missionFrame}
