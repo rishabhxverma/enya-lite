@@ -44,11 +44,16 @@ export function TextLesson({ studentId, lessonId }: Props) {
     };
   }, [studentId, lessonId]);
 
-  // Mark complete when 2/3 answered correctly
+  // Mark complete when 2/3 answered correctly + confetti on full streak
   useEffect(() => {
     if (correctCount >= 2 && lesson) {
       markActivityComplete(studentId, `${lessonId}-text`);
       awardXp(studentId, 30);
+    }
+    if (correctCount >= 3) {
+      import("canvas-confetti").then((m) => {
+        m.default({ particleCount: 80, spread: 70, origin: { y: 0.65 } });
+      });
     }
   }, [correctCount, studentId, lessonId, lesson, markActivityComplete, awardXp]);
 
