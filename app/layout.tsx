@@ -31,14 +31,23 @@ export const metadata: Metadata = {
   description: "L4 personalized learning for K-12 EAL classrooms",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`${inter.variable} ${caveat.variable} ${orbitron.variable}`}>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+    <html
+      lang="en"
+      className={`${inter.variable} ${caveat.variable} ${orbitron.variable}`}
+    >
+      <body className="min-h-dvh bg-background text-foreground antialiased">
         <TopBar />
         <div className="pt-16">
-          <HealthBanner />
-          <main>{children}</main>
+          <main>
+            <HealthBanner />
+            {children}
+          </main>
         </div>
         <Toaster position="top-right" richColors />
       </body>

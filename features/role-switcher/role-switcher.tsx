@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useRoleStore } from "@shared/stores/role-store";
 import { useStudentStore } from "@shared/stores/student-store";
 import { cn } from "@shared/lib/utils";
+import { Button } from "@/shared/components/ui/button";
 
 interface Pill {
   key: string;
@@ -31,7 +32,7 @@ export function RoleSwitcher() {
   ];
 
   const activeKey =
-    role === "teacher" ? "teacher" : currentStudentId ?? "maya";
+    role === "teacher" ? "teacher" : (currentStudentId ?? "maya");
 
   const onSelect = (p: Pill) => {
     if (p.key === "teacher") setRole("teacher");
@@ -55,29 +56,19 @@ export function RoleSwitcher() {
         const isActive = activeKey === p.key;
         const profile = students.find((s) => s.id === p.key);
         return (
-          <Link
-            key={p.key}
-            href={p.href}
-            onClick={() => onSelect(p)}
-            className={cn(
-              "inline-flex items-center gap-2 h-10 px-4 rounded-full border-2 font-bold text-sm transition-all duration-150",
-              "active:scale-[0.97]",
-              isActive
-                ? "bg-[hsl(var(--button-primary))] border-[hsl(var(--button-primary-border))] text-[hsl(var(--button-primary-text))] shadow-[0_4px_0_0_hsl(var(--button-primary-shadow))]"
-                : "bg-[hsl(var(--button-neutral))] border-[hsl(var(--button-neutral-border))] text-[hsl(var(--button-neutral-text))] shadow-[0_2px_0_0_hsl(var(--button-neutral-shadow))] hover:scale-105"
-            )}
-          >
-            <span aria-hidden>{profile?.avatarUrl ? "" : p.emoji}</span>
-            {profile?.avatarUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatarUrl}
-                alt=""
-                className="w-6 h-6 rounded-full object-cover"
-              />
-            )}
-            <span>{p.label}</span>
-          </Link>
+          <Button asChild key={p.key} variant={isActive? "enya_primary": "enya_neutral"} size="sm">
+            <Link key={p.key} href={p.href} onClick={() => onSelect(p)}>
+              <span aria-hidden>{profile?.avatarUrl ? "" : p.emoji}</span>
+              {profile?.avatarUrl && (
+                <img
+                  src={profile.avatarUrl}
+                  alt=""
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              )}
+              <span>{p.label}</span>
+            </Link>
+          </Button>
         );
       })}
     </div>
