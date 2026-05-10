@@ -1,0 +1,16 @@
+{
+  "studentId": "liam",
+  "greeting": "Hey Liam! 🚀 Ready for today's mission?",
+  "todaysRecommendation": {
+    "lessonId": "photosynthesis-1",
+    "title": "Plants: The Original Energy Engineers",
+    "reason": "Last time you nailed the chemistry quiz. Today we explore how plants pull off the same trick."
+  },
+  "xp": 720,
+  "streakDays": 7,
+  "motivationalNudges": [
+    "You're on a 7-day streak — keep it going!",
+    "Today's story has a Mars colony scenario. Captain mode: engaged."
+  ],
+  "themedHeroImageUrl": "/seed/themes/liam-hero.svg"
+}

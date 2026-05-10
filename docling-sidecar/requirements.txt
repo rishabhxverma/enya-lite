@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+# Primary parser
+docling>=2.0
+# Fallback when docling is not installed
+pdfminer.six>=20240706

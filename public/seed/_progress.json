@@ -1,0 +1,31 @@
+{
+  "maya": {
+    "studentId": "maya",
+    "xp": 240,
+    "streakDays": 3,
+    "completedActivities": [],
+    "quizScores": {},
+    "skillMastery": {
+      "reading-comprehension": 35,
+      "vocabulary": 20,
+      "speaking": 15,
+      "writing": 25,
+      "listening": 30
+    }
+  },
+  "liam": {
+    "studentId": "liam",
+    "xp": 720,
+    "streakDays": 7,
+    "completedActivities": [],
+    "quizScores": {},
+    "skillMastery": {
+      "reading-comprehension": 75,
+      "vocabulary": 80,
+      "speaking": 70,
+      "writing": 65,
+      "listening": 78,
+      "scientific-reasoning": 72
+    }
+  }
+}

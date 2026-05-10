@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-05-09T12:00:00Z",
+  "version": 1,
+  "content": {
+    "studentId": "maya",
+    "lessonId": "photosynthesis-1",
+    "title": "How Plants Eat Sunlight",
+    "bodyMarkdown": "## A butterfly's secret\n\nWhen a butterfly drinks from a flower, the flower gives sweet juice. But how does the flower make this juice?\n\nThe flower uses **sunlight**! Plants make their own food. They are amazing.\n\n## What plants need\n\nPlants need four things. They are:\n\n- **Sun** ☀️ (for light)\n- **Water** 💧 (from rain)\n- **Air** 💨 (we cannot see it)\n- **Soil** 🌱 (for their roots)\n\nWhen a plant has all four, it grows big.\n\n## A new word: photosynthesis\n\nThe big word is **photosynthesis**.\n\nIt sounds hard but it is simple. The plant makes food from sun, water, and air. That is photosynthesis.\n\nButterflies love plants. Plants need sun. Now you know!",
+    "diagrams": [
+      {
+        "caption": "Plants need four things to grow",
+        "emojiArt": "☀️  +  💧  +  💨  +  🌱  →  🌸"
+      }
+    ],
+    "comprehensionQuestions": [
+      {
+        "id": "q1",
+        "prompt": "What helps the plant the most?",
+        "type": "multiple-choice",
+        "options": ["The sun", "The moon", "The wind", "The night"],
+        "correctAnswerIndex": 0,
+        "explanation": "Yes! The sun gives light. Plants need light to make food.",
+        "learningObjectiveId": "lo-1"
+      },
+      {
+        "id": "q2",
+        "prompt": "What is the big word for how plants make food?",
+        "type": "fill-blank",
+        "correctAnswer": "photosynthesis",
+        "explanation": "Photosynthesis. Plants use sun, water, and air to make food.",
+        "learningObjectiveId": "lo-3"
+      },
+      {
+        "id": "q3",
+        "prompt": "True or false: Plants can grow without water.",
+        "type": "true-false",
+        "correctAnswer": "false",
+        "explanation": "False. Plants need water. Without water they cannot live.",
+        "learningObjectiveId": "lo-1"
+      }
+    ]
+  }
+}

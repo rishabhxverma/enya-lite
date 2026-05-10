@@ -1,0 +1,16 @@
+{
+  "studentId": "maya",
+  "greeting": "Hi Maya! 🦋 Ready for today's adventure?",
+  "todaysRecommendation": {
+    "lessonId": "photosynthesis-1",
+    "title": "What do plants need?",
+    "reason": "You loved the butterfly garden activity. Today's lesson is about how flowers grow!"
+  },
+  "xp": 240,
+  "streakDays": 3,
+  "motivationalNudges": [
+    "Yesterday you finished 2 activities. Great work!",
+    "Try the voice activity today — your tutor wants to hear you!"
+  ],
+  "themedHeroImageUrl": "/seed/themes/maya-hero.svg"
+}

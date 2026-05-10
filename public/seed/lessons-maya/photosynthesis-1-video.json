@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-05-09T12:01:00Z",
+  "version": 1,
+  "content": {
+    "studentId": "maya",
+    "lessonId": "photosynthesis-1",
+    "youtubeId": "UPBMG5EYydo",
+    "title": "How Plants Make Food",
+    "overlayQuestions": [
+      {
+        "pauseAtSeconds": 30,
+        "question": {
+          "id": "vq1",
+          "prompt": "What did the plant just need from the sun?",
+          "type": "multiple-choice",
+          "options": ["Light", "Sound", "A song", "Wind"],
+          "correctAnswerIndex": 0,
+          "explanation": "The sun gives light. Plants use light to make food.",
+          "learningObjectiveId": "lo-1"
+        }
+      },
+      {
+        "pauseAtSeconds": 90,
+        "question": {
+          "id": "vq2",
+          "prompt": "What two things does the plant get from rain and air?",
+          "type": "multiple-choice",
+          "options": ["Water and air", "Music and food", "Color and shape", "Trees and birds"],
+          "correctAnswerIndex": 0,
+          "explanation": "Plants get water from the rain. Plants get air all around them.",
+          "learningObjectiveId": "lo-1"
+        }
+      },
+      {
+        "pauseAtSeconds": 180,
+        "question": {
+          "id": "vq3",
+          "prompt": "Why is the leaf green?",
+          "type": "fill-blank",
+          "correctAnswer": "chlorophyll",
+          "explanation": "Chlorophyll. It is the green helper inside the leaf.",
+          "learningObjectiveId": "lo-2"
+        }
+      }
+    ]
+  }
+}

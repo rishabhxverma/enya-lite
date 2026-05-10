@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-05-09T12:00:01Z",
+  "version": 1,
+  "content": {
+    "studentId": "liam",
+    "lessonId": "photosynthesis-1",
+    "title": "Plants: The Original Energy Engineers",
+    "bodyMarkdown": "## Engineering with sunlight\n\nLong before astronauts figured out how to grow food on a space station, plants had perfected a process humans still can't fully replicate. Plants are bio-chemical engineers — and their fuel is sunlight.\n\n## The four inputs\n\nEvery plant operates on four resources working together:\n\n- **Solar energy** ☀️ — captured by green chlorophyll molecules\n- **Water** 💧 — pulled up from the roots\n- **Carbon dioxide** 💨 — absorbed from the air\n- **Soil nutrients** 🌱 — providing trace minerals\n\nMissing any one and the plant's energy production halts. It's basically a self-sustaining solar plant — no batteries required.\n\n## Photosynthesis: the chemistry\n\nThe formal name for this process is **photosynthesis**. Inside leaf cells, chlorophyll converts solar photons into chemical energy, splitting water molecules and recombining the products with carbon dioxide to form glucose. Oxygen is released as a byproduct — the air you're breathing right now was likely produced by a plant.\n\nIf you ever design a Mars colony, plants are doing more than feeding the crew — they're keeping the atmosphere breathable.",
+    "diagrams": [
+      {
+        "caption": "Photosynthesis is a chemical conversion: light + water + CO₂ → glucose + O₂",
+        "emojiArt": "☀️ + 💧 + 💨  →  🍇 + 🫧"
+      }
+    ],
+    "comprehensionQuestions": [
+      {
+        "id": "q1",
+        "prompt": "Which molecule captures solar energy inside the leaf?",
+        "type": "multiple-choice",
+        "options": ["Glucose", "Chlorophyll", "Carbon dioxide", "Mitochondria"],
+        "correctAnswerIndex": 1,
+        "explanation": "Correct — chlorophyll absorbs photons and kicks off the chemical conversion.",
+        "learningObjectiveId": "lo-1"
+      },
+      {
+        "id": "q2",
+        "prompt": "What gas is released as a byproduct of photosynthesis?",
+        "type": "fill-blank",
+        "correctAnswer": "oxygen",
+        "explanation": "Oxygen. Plants exchange CO₂ for O₂ — making them critical for breathable atmospheres.",
+        "learningObjectiveId": "lo-3"
+      },
+      {
+        "id": "q3",
+        "prompt": "True or false: Plants could survive on a Mars colony with only soil and water — no sunlight needed.",
+        "type": "true-false",
+        "correctAnswer": "false",
+        "explanation": "False. Without solar energy or artificial light, photosynthesis cannot occur.",
+        "learningObjectiveId": "lo-2"
+      }
+    ]
+  }
+}

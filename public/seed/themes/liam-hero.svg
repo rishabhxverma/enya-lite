@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1024" preserveAspectRatio="xMidYMid slice" width="1792" height="1024">
+  <defs>
+    <linearGradient id="space" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="40%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#0c0a1f"/>
+    </linearGradient>
+    <radialGradient id="nebula" cx="0.25" cy="0.4" r="0.5">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#0c0a1f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="earth" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="65%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </radialGradient>
+  </defs>
+  <rect width="1792" height="1024" fill="url(#space)"/>
+  <rect width="1792" height="1024" fill="url(#nebula)"/>
+  <!-- starfield -->
+  <g fill="#fff">
+    <circle cx="120" cy="140" r="1.6"/>
+    <circle cx="280" cy="60" r="1"/>
+    <circle cx="440" cy="180" r="2"/>
+    <circle cx="600" cy="80" r="1.4"/>
+    <circle cx="780" cy="220" r="1"/>
+    <circle cx="960" cy="60" r="2.2"/>
+    <circle cx="1140" cy="180" r="1.2"/>
+    <circle cx="1320" cy="100" r="1.6"/>
+    <circle cx="1480" cy="240" r="1"/>
+    <circle cx="1640" cy="120" r="2"/>
+    <circle cx="40" cy="380" r="1.4"/>
+    <circle cx="220" cy="460" r="1"/>
+    <circle cx="380" cy="540" r="1.6"/>
+    <circle cx="520" cy="380" r="1"/>
+    <circle cx="690" cy="600" r="1.8"/>
+    <circle cx="900" cy="700" r="1.2"/>
+    <circle cx="1060" cy="820" r="1.6"/>
+    <circle cx="1220" cy="660" r="1"/>
+    <circle cx="1400" cy="800" r="2"/>
+    <circle cx="1580" cy="700" r="1.2"/>
+    <circle cx="1720" cy="800" r="1.4"/>
+  </g>
+  <!-- big planet (Earth-like) -->
+  <circle cx="1480" cy="800" r="290" fill="url(#earth)"/>
+  <!-- ring of light around planet -->
+  <ellipse cx="1480" cy="800" rx="350" ry="50" fill="none" stroke="#94a3b8" stroke-opacity="0.25" stroke-width="2"/>
+  <!-- emoji sci-fi accents -->
+  <g font-family="system-ui,Apple Color Emoji" text-anchor="middle">
+    <text x="500" y="320" font-size="180">🚀</text>
+    <text x="900" y="500" font-size="160">🛰️</text>
+    <text x="280" y="700" font-size="140">⭐</text>
+    <text x="1180" y="320" font-size="120">✨</text>
+  </g>
+</svg>

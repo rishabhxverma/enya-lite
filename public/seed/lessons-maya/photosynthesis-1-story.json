@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-05-09T12:02:00Z",
+  "version": 1,
+  "content": {
+    "initialNode": {
+      "id": "maya-1-n1",
+      "narrative": "Maya walks into her garden one morning. The sun is bright. She sees a small butterfly with a tired wing. The butterfly says, 'My favorite flowers are not happy. Can you help?' Maya looks at the flowers. They are not opening. They look small.",
+      "illustrationUrl": null,
+      "illustrationFallbackEmoji": "🌸🦋☀️🌿",
+      "isTerminal": false,
+      "choices": [
+        {
+          "text": "Did the flowers get too much sun?",
+          "isCorrect": false,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "maya-1-n1",
+          "feedbackOnSelect": "Hmm, plants love the sun. Sun makes them happy. The flowers need sun to grow. Try another idea!"
+        },
+        {
+          "text": "Did the flowers need more water?",
+          "isCorrect": true,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "maya-1-n2",
+          "feedbackOnSelect": ""
+        },
+        {
+          "text": "Did the butterfly do something wrong?",
+          "isCorrect": false,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "maya-1-n1",
+          "feedbackOnSelect": "Oh no, the butterfly did nothing wrong. Butterflies help flowers. Let's think about what the flowers need."
+        }
+      ]
+    },
+    "allNodes": {
+      "maya-1-n2": {
+        "id": "maya-1-n2",
+        "narrative": "Maya gets her watering can. She gives the flowers a long drink. They start to look happier. But there is one more problem. The garden has a dark corner. There is no sunlight there! What can Maya do?",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "💧🌸🌿😊",
+        "isTerminal": false,
+        "choices": [
+          {
+            "text": "Move the dark flowers into the sun",
+            "isCorrect": true,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "maya-1-n3",
+            "feedbackOnSelect": ""
+          },
+          {
+            "text": "Sing to the flowers",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "maya-1-n2",
+            "feedbackOnSelect": "Singing is sweet, but it does not make food for the flower. The flower needs sun to make food."
+          },
+          {
+            "text": "Cover them with leaves to protect them",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "maya-1-n2",
+            "feedbackOnSelect": "Covering them blocks the sun. Plants need sun to grow. Try again!"
+          }
+        ]
+      },
+      "maya-1-n3": {
+        "id": "maya-1-n3",
+        "narrative": "Maya carefully moves the flowers into the sun. Now they have water AND sunlight! The butterfly does a happy dance. 'You helped my friends! What is their secret?' the butterfly asks. Maya says...",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "🌸☀️🦋💃",
+        "isTerminal": false,
+        "choices": [
+          {
+            "text": "They eat sun, water, and air to make food",
+            "isCorrect": true,
+            "learningObjectiveId": "lo-3",
+            "nextNodeId": "maya-1-n4",
+            "feedbackOnSelect": ""
+          },
+          {
+            "text": "They are magic",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-3",
+            "nextNodeId": "maya-1-n3",
+            "feedbackOnSelect": "Plants are amazing but it is not magic — it is photosynthesis! They use sun, water, and air."
+          },
+          {
+            "text": "They eat the soil",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-3",
+            "nextNodeId": "maya-1-n3",
+            "feedbackOnSelect": "Plants use the soil to hold their roots. But they do not eat the soil. They use sun, water, and air to make food."
+          }
+        ]
+      },
+      "maya-1-n4": {
+        "id": "maya-1-n4",
+        "narrative": "The butterfly smiles. 'Photosynthesis. That is a big word for a big idea.' All the flowers in the garden open. The butterfly's friends come back. Maya looks at her drawing of the garden. She is proud. She helped because she learned how plants live.",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "🌸🌼🌺🦋✨",
+        "isTerminal": true,
+        "choices": []
+      }
+    }
+  }
+}

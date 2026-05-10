@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-05-09T12:02:01Z",
+  "version": 1,
+  "content": {
+    "initialNode": {
+      "id": "liam-1-n1",
+      "narrative": "Captain Liam, the hydroponics bay alarm just sounded. The plants in Pod 3 are wilting and the diagnostic algorithm can't pinpoint the cause. The crew is looking to you. Four subsystems are flagged. What do you check first?",
+      "illustrationUrl": null,
+      "illustrationFallbackEmoji": "🚀🛰️🌱🚨",
+      "isTerminal": false,
+      "choices": [
+        {
+          "text": "Verify the grow-light array is operating at full intensity",
+          "isCorrect": true,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "liam-1-n2",
+          "feedbackOnSelect": ""
+        },
+        {
+          "text": "Pump up the music in the bay",
+          "isCorrect": false,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "liam-1-n1",
+          "feedbackOnSelect": "Good captain instinct, but plants don't respond to audio. Energy comes from light — that's the chlorophyll's input. Try again."
+        },
+        {
+          "text": "Lock down the door to the bay",
+          "isCorrect": false,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "liam-1-n1",
+          "feedbackOnSelect": "Door locks won't affect photosynthesis. The plants need their inputs — start with the energy source."
+        },
+        {
+          "text": "Reroute oxygen to the engine room",
+          "isCorrect": false,
+          "learningObjectiveId": "lo-1",
+          "nextNodeId": "liam-1-n1",
+          "feedbackOnSelect": "Counterproductive — plants RELEASE oxygen as a byproduct, they need CO₂ as input. Try the energy source first."
+        }
+      ]
+    },
+    "allNodes": {
+      "liam-1-n2": {
+        "id": "liam-1-n2",
+        "narrative": "Confirmed: the LED grow-lights had drifted to 40% output overnight. You boost them back to spec. The plants perk up — but only some recover. The leaves on Pod 3 are still drooping. What's the next input to check?",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "💡🌿🛰️🔧",
+        "isTerminal": false,
+        "choices": [
+          {
+            "text": "Inspect the irrigation manifold for leaks",
+            "isCorrect": true,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "liam-1-n3",
+            "feedbackOnSelect": ""
+          },
+          {
+            "text": "Bring more astronauts into the bay",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "liam-1-n2",
+            "feedbackOnSelect": "More crew won't water the plants. Photosynthesis still needs water as a reactant — check the water delivery system."
+          },
+          {
+            "text": "Scrub the floors clean",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-1",
+            "nextNodeId": "liam-1-n2",
+            "feedbackOnSelect": "Cleanliness helps long-term, but it doesn't deliver inputs. Plants need water. Check irrigation."
+          }
+        ]
+      },
+      "liam-1-n3": {
+        "id": "liam-1-n3",
+        "narrative": "You patch the irrigation leak — water flow restored. Most plants recover, but a few in the back are still struggling. The atmospheric sensor flashes: CO₂ is at 250 ppm, well below baseline. What's the cause?",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "💧🌱🛰️📉",
+        "isTerminal": false,
+        "choices": [
+          {
+            "text": "The CO₂ scrubbers are over-scrubbing — recalibrate them",
+            "isCorrect": true,
+            "learningObjectiveId": "lo-2",
+            "nextNodeId": "liam-1-n4",
+            "feedbackOnSelect": ""
+          },
+          {
+            "text": "Add more oxygen to the bay",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-2",
+            "nextNodeId": "liam-1-n3",
+            "feedbackOnSelect": "Oxygen is a byproduct, not an input. Plants need CO₂ — and CO₂ is too low. Check the scrubbers."
+          },
+          {
+            "text": "Reduce humidity",
+            "isCorrect": false,
+            "learningObjectiveId": "lo-2",
+            "nextNodeId": "liam-1-n3",
+            "feedbackOnSelect": "Humidity isn't the gating input here. The CO₂ reading is the smoking gun."
+          }
+        ]
+      },
+      "liam-1-n4": {
+        "id": "liam-1-n4",
+        "narrative": "Mission accomplished. With light, water, and CO₂ all restored, the plants resume normal photosynthesis. The captain's log records: 'Cadet Liam saved Pod 3's food supply by methodically restoring each photosynthetic input — light, water, and CO₂. Oxygen byproduct levels stabilizing. Mars colony viability: green.'",
+        "illustrationUrl": null,
+        "illustrationFallbackEmoji": "🚀🌱🛰️🏆",
+        "isTerminal": true,
+        "choices": []
+      }
+    }
+  }
+}

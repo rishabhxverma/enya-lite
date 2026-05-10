@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-05-09T12:01:01Z",
+  "version": 1,
+  "content": {
+    "studentId": "liam",
+    "lessonId": "photosynthesis-1",
+    "youtubeId": "UPBMG5EYydo",
+    "title": "How Plants Make Food",
+    "overlayQuestions": [
+      {
+        "pauseAtSeconds": 30,
+        "question": {
+          "id": "vq1",
+          "prompt": "What form of energy is the plant capturing right now?",
+          "type": "multiple-choice",
+          "options": [
+            "Solar (light) energy",
+            "Sound energy",
+            "Mechanical energy",
+            "Electrical energy"
+          ],
+          "correctAnswerIndex": 0,
+          "explanation": "Correct — chlorophyll converts solar energy into chemical energy.",
+          "learningObjectiveId": "lo-1"
+        }
+      },
+      {
+        "pauseAtSeconds": 90,
+        "question": {
+          "id": "vq2",
+          "prompt": "What two raw materials are entering the leaf in this scene?",
+          "type": "multiple-choice",
+          "options": [
+            "Water and carbon dioxide",
+            "Glucose and oxygen",
+            "Nitrogen and hydrogen",
+            "Methane and water"
+          ],
+          "correctAnswerIndex": 0,
+          "explanation": "Water from the roots and CO₂ from the air — the inputs to the photosynthesis equation.",
+          "learningObjectiveId": "lo-1"
+        }
+      },
+      {
+        "pauseAtSeconds": 180,
+        "question": {
+          "id": "vq3",
+          "prompt": "Identify the molecule responsible for capturing photons in the leaf cell.",
+          "type": "fill-blank",
+          "correctAnswer": "chlorophyll",
+          "explanation": "Chlorophyll absorbs primarily red and blue wavelengths, reflecting green — which is why leaves look green.",
+          "learningObjectiveId": "lo-2"
+        }
+      }
+    ]
+  }
+}

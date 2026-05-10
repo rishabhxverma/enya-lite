@@ -1,0 +1,64 @@
+[
+  {
+    "id": "photosynthesis-101",
+    "title": "How Plants Make Food",
+    "topic": "Photosynthesis",
+    "gradeLevel": 3,
+    "curriculumStandard": "BC Grade 3 Science 2.1 — Living things have features and behaviours that help them survive in their environment",
+    "textbookDocumentId": "doc_seed_textbook_photosynthesis",
+    "units": [
+      {
+        "id": "unit-1",
+        "title": "Plants are amazing food factories",
+        "description": "Students discover that plants make their own food using simple ingredients from their environment.",
+        "lessons": [
+          {
+            "id": "photosynthesis-1",
+            "title": "What do plants need?",
+            "learningObjectives": [
+              "Students will identify the four things plants need to grow: sunlight, water, air, and soil",
+              "Students will describe what happens to a plant when one of these is missing",
+              "Students will use the word 'photosynthesis' to name the process"
+            ],
+            "activities": [
+              { "type": "text",  "id": "photosynthesis-1-text",  "status": "available" },
+              { "type": "video", "id": "photosynthesis-1-video", "status": "available" },
+              { "type": "voice", "id": "photosynthesis-1-voice", "status": "available", "activitySubtype": "explain-back" },
+              { "type": "story", "id": "photosynthesis-1-story", "status": "available", "theme": "personalized" }
+            ]
+          },
+          {
+            "id": "photosynthesis-2",
+            "title": "Inside a leaf: tiny food factories",
+            "learningObjectives": [
+              "Students will identify chlorophyll as the green substance that captures sunlight",
+              "Students will describe the leaf as the location where photosynthesis happens",
+              "Students will explain why most leaves are green"
+            ],
+            "activities": [
+              { "type": "text",  "id": "photosynthesis-2-text",  "status": "locked" },
+              { "type": "video", "id": "photosynthesis-2-video", "status": "locked" },
+              { "type": "voice", "id": "photosynthesis-2-voice", "status": "locked", "activitySubtype": "comprehension" },
+              { "type": "story", "id": "photosynthesis-2-story", "status": "locked", "theme": "personalized" }
+            ]
+          },
+          {
+            "id": "photosynthesis-3",
+            "title": "Why plants matter for everyone",
+            "learningObjectives": [
+              "Students will explain that plants make oxygen as a byproduct of photosynthesis",
+              "Students will describe how animals (including humans) depend on plants",
+              "Students will give one example of how to take care of plants"
+            ],
+            "activities": [
+              { "type": "text",  "id": "photosynthesis-3-text",  "status": "locked" },
+              { "type": "video", "id": "photosynthesis-3-video", "status": "locked" },
+              { "type": "voice", "id": "photosynthesis-3-voice", "status": "locked", "activitySubtype": "debate" },
+              { "type": "story", "id": "photosynthesis-3-story", "status": "locked", "theme": "personalized" }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
