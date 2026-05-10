@@ -247,23 +247,45 @@ export async function aiSelectPausePoints(args: {
       ? learningObjectives.map((o) => `- ${o}`).join("\n")
       : "- Identify what plants need to grow\n- Use the word photosynthesis";
 
-  const systemAddendum = `OUTPUT FORMAT — CRITICAL
-Reply with ONE JSON object and NOTHING else. No prose. No "Based on…" preamble. No markdown fences. Your entire reply must start with the character '{' and end with '}'. If you include any other text, the parser fails and the user is shown a broken UI.
+  // v: 2026-05-10 — persona override.
+  // The Backboard assistant has a global system prompt that frames the
+  // model as "Enya, a K-12 tutor." That persona dominates per-message
+  // addenda and causes the model to narrate ("Based on the transcript,
+  // here are three pause-points…") instead of calling the submit tool.
+  // The opening <role_override> block tells the model to drop the tutor
+  // persona for this single turn, and the closing <output_contract> hard-
+  // codes the only acceptable response: a `submit_pause_points` tool call.
+  const systemAddendum = `<role_override v="2026-05-10">
+For this turn ONLY, you are NOT Enya-the-tutor. You are a backend JSON-producing function. The user is a developer, not a student. Drop the friendly tutor voice entirely. Do not greet, summarize, or explain.
+</role_override>
 
-TASK
-Pick ${count} pause-points for an inline overlay quiz that fires while a student watches a YouTube video. Each pause should:
+<output_contract>
+You have exactly ONE acceptable action: call the \`submit_pause_points\` tool with valid arguments. You MUST NOT emit any message content. Tool call is the ONLY output.
+
+If you cannot pick ${count} valid pauses, still call the tool with as many as you can. Never reply in prose. Never wrap the answer in markdown. Never narrate that you are about to call the tool.
+</output_contract>
+
+<task>
+Pick ${count} pause-points for an inline overlay quiz that fires while a student watches a YouTube video. Each pause must:
 1. Land at the END of a cue (audio finishes a thought, not mid-word).
 2. Sit just after a teaching moment — a key concept, vocabulary introduction, or a visual the narrator pointed to.
 3. Be tied to ONE of the learning objectives below.
-4. Match the student's EAL level — simpler vocab for Emerging, scientific terms for Proficient.
+4. Match the student's EAL level — simpler vocab for Emerging (≤8-word questions), scientific terms permitted for Proficient.
+</task>
 
-REQUIRED JSON SHAPE
-{"pauses":[{"cueIndex":<int>,"rationale":"<one sentence, plain text>","questionPrompt":"<a question the student can answer based on what they just heard>"}]}
+<example_tool_call note="follow shape, do not reuse content">
+submit_pause_points({"pauses":[
+  {"cueIndex":12,"rationale":"Narrator just defined photosynthesis","questionPrompt":"What word did the video just teach for how plants make food?"},
+  {"cueIndex":34,"rationale":"All four ingredients (sun, water, air, soil) just listed","questionPrompt":"Name two of the four things plants need."}
+]})
+</example_tool_call>
 
-The cueIndex must be a valid index from the list. Return exactly ${count} pauses, ordered by ascending time.
-
-EXAMPLE (do not reuse, just follow the shape):
-{"pauses":[{"cueIndex":12,"rationale":"Narrator just defined photosynthesis","questionPrompt":"What word did the video just teach for how plants make food?"},{"cueIndex":34,"rationale":"All four ingredients (sun, water, air, soil) just listed","questionPrompt":"Name two of the four things plants need."}]}`;
+<red_flags>
+- Replying with "Based on the transcript…" — STOP, call the tool.
+- Wrapping JSON in \`\`\`json fences — STOP, call the tool.
+- Asking the user for clarification — there is no user, call the tool.
+- Returning fewer than ${count} pauses without trying — call the tool with what you have.
+</red_flags>`;
 
   const userMessage = `STUDENT
 ${studentLine}
