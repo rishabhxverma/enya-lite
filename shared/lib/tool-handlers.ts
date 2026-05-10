@@ -18,6 +18,10 @@ import {
   stubDashboardForStudent,
 } from "@shared/lib/stub-content";
 import { getStudentProfile } from "@shared/lib/student-profiles";
+import {
+  fetchTranscript,
+  suggestPausePoints,
+} from "@shared/lib/youtube-transcript";
 
 export function buildTeacherHandlers(): ToolHandlerMap {
   return {
@@ -193,10 +197,46 @@ export function buildStudentHandlers(studentId: string): ToolHandlerMap {
     generate_video_lesson_questions: async (args) => {
       const id = (args.studentId as string) ?? studentId;
       const lessonId = (args.lessonId as string) ?? "photosynthesis-1";
+      const youtubeId = (args.youtubeId as string) ?? "UPBMG5EYydo";
       const seed =
         STUB_VIDEO_LESSONS[id]?.[lessonId] ??
         STUB_VIDEO_LESSONS.maya[lessonId];
-      return { overlayQuestions: seed?.overlayQuestions ?? [] };
+      const seedQuestions = seed?.overlayQuestions ?? [];
+
+      // If we can fetch a real transcript, realign each seed question's
+      // `pauseAtSeconds` to the nearest cue boundary that mentions a
+      // relevant concept. The wording and answer keys stay intact —
+      // only the timestamp moves. This way Maya's hand-tuned questions
+      // still feel personalized but the pause never lands mid-sentence.
+      try {
+        const transcript = await fetchTranscript(youtubeId);
+        if (transcript && seedQuestions.length > 0) {
+          const points = suggestPausePoints(transcript, {
+            count: seedQuestions.length,
+            keywords: [
+              "sunlight",
+              "water",
+              "air",
+              "carbon dioxide",
+              "chlorophyll",
+              "photosynthesis",
+              "leaves",
+              "roots",
+              "oxygen",
+            ],
+          });
+          if (points.length === seedQuestions.length) {
+            const aligned = seedQuestions.map((q, i) => ({
+              ...q,
+              pauseAtSeconds: points[i].atSeconds,
+            }));
+            return { overlayQuestions: aligned };
+          }
+        }
+      } catch {
+        /* fall through to seed timestamps */
+      }
+      return { overlayQuestions: seedQuestions };
     },
     search_youtube_video: async () => ({
       candidates: [
