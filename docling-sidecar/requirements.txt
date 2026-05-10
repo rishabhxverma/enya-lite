@@ -1,7 +1,14 @@
+# Lightweight base requirements — what Vercel installs.
+#
+# We keep this file small and Vercel-deployable. The full docling parser
+# adds torch/transformers/opencv (~2GB on disk) which exceeds Vercel's
+# 250MB unzipped Python function limit. For local dev with the rich docling
+# parser, install requirements-full.txt instead.
+#
+# Vercel:  pip install -r requirements.txt        → pdfminer fallback only
+# Local:   pip install -r requirements-full.txt   → docling + fallback
 fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
-# Primary parser
-docling>=2.0
-# Fallback when docling is not installed
+# Fallback parser. Small, pure-Python, fits inside Vercel functions.
 pdfminer.six>=20240706
