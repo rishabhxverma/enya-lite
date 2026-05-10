@@ -6,7 +6,7 @@ export const TEACHER_TOOLS: ToolDefinition[] = [
     function: {
       name: "parse_uploaded_document",
       description:
-        "Parse an uploaded PDF/DOCX file via Docling and store chunks as a Backboard document for RAG. Call this immediately after a teacher uploads a file.",
+        "Parse an uploaded PDF/DOCX file via Docling and store chunks as a Backboard document for RAG. Only call when the user uploaded a file and the [ATTACHMENTS] block does NOT already include a documentId for it — uploads in the chat UI are pre-parsed and the documentId is surfaced inline; calling this again on an already-indexed file is wasteful and produces a duplicate parse card.",
       parameters: {
         type: "object",
         properties: {
