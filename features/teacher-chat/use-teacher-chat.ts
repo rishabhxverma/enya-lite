@@ -16,7 +16,12 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   toolResults?: ToolResultRow[];
-  attachments?: { documentId?: string; filename?: string }[];
+  attachments?: {
+    documentId?: string;
+    filename?: string;
+    pageCount?: number;
+    chunkCount?: number;
+  }[];
   pending?: boolean;
 }
 
@@ -26,6 +31,7 @@ export interface AttachmentChip {
   filename: string;
   status: "uploading" | "ready" | "failed";
   pageCount?: number;
+  chunkCount?: number;
 }
 
 const greetingMsg: ChatMessage = {
@@ -51,6 +57,8 @@ export function useTeacherChat() {
         attachments: attachments.map((a) => ({
           documentId: a.documentId,
           filename: a.filename,
+          pageCount: a.pageCount,
+          chunkCount: a.chunkCount,
         })),
       };
       const pendingId = `a_${Date.now()}`;
@@ -148,6 +156,7 @@ export function useTeacherChat() {
                 documentId: result.documentId,
                 status: "ready",
                 pageCount: result.pageCount,
+                chunkCount: result.chunkCount,
               }
             : x
         )

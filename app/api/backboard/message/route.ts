@@ -16,6 +16,8 @@ const BodySchema = z.object({
         documentId: z.string().optional(),
         uploadId: z.string().optional(),
         filename: z.string().optional(),
+        pageCount: z.number().optional(),
+        chunkCount: z.number().optional(),
       })
     )
     .optional(),
@@ -46,16 +48,23 @@ export async function POST(req: Request) {
   const tools = body.role === "teacher" ? TEACHER_TOOLS : STUDENT_TOOLS;
   const handlers =
     body.role === "teacher"
-      ? buildTeacherHandlers()
+      ? buildTeacherHandlers({ attachments: body.attachments })
       : buildStudentHandlers(body.studentId ?? "maya");
 
   let attachmentsBlock = "";
   if (body.attachments?.length) {
-    attachmentsBlock = `\n\n[ATTACHMENTS]\n${body.attachments
-      .map(
-        (a) =>
-          `- ${a.filename ?? "file"} (documentId: ${a.documentId ?? a.uploadId ?? "?"})`
-      )
+    // Surface the real parse stats inline so the model doesn't re-invoke
+    // parse_uploaded_document on an already-indexed file (and so the
+    // tool-result card it does emit matches the upload card the user saw).
+    attachmentsBlock = `\n\n[ATTACHMENTS — already parsed and indexed; do NOT call parse_uploaded_document again]\n${body.attachments
+      .map((a) => {
+        const id = a.documentId ?? a.uploadId ?? "?";
+        const stats =
+          a.pageCount != null && a.chunkCount != null
+            ? ` — ${a.pageCount} pages, ${a.chunkCount} chunks`
+            : "";
+        return `- ${a.filename ?? "file"} (documentId: ${id})${stats}`;
+      })
       .join("\n")}`;
   }
 

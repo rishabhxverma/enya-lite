@@ -25,6 +25,11 @@ export const backboardService = {
     content: string;
     role: "teacher" | "student";
     studentId?: string;
-    attachments?: { documentId?: string; filename?: string }[];
+    attachments?: {
+      documentId?: string;
+      filename?: string;
+      pageCount?: number;
+      chunkCount?: number;
+    }[];
   }) => post<BackboardMessageReply>("/api/backboard/message", input),
 };

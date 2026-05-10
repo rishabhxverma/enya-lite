@@ -217,8 +217,14 @@ class BackboardImpl implements BackboardClient {
       const status = ax.response?.status;
       const detail = JSON.stringify(ax.response?.data ?? "");
       const isStreamingBlip500 = status === 500;
+      // Backboard returns 404 with body "Thread not found, or no pending
+      // REQUIRES_ACTION on the thread" when the outputs were already
+      // consumed (a previous attempt landed despite a streaming-blip 500).
+      // The legacy "already submitted" wording never matched in practice —
+      // match what the docs / live API actually return.
       const isAlreadySubmitted404 =
-        status === 404 && /already submitted/i.test(detail);
+        status === 404 &&
+        /already submitted|no pending|requires_action/i.test(detail);
       if (isStreamingBlip500 || isAlreadySubmitted404) {
         console.warn(
           `[backboard:submitToolOutputs] ${status} likely streaming-pipeline ` +
@@ -247,6 +253,11 @@ class BackboardImpl implements BackboardClient {
     const maxMs = opts.maxMs ?? 20_000;
     const intervalMs = opts.intervalMs ?? 1_000;
     const start = Date.now();
+    // Capture the last assistant message we saw so we can emit a diagnostic
+    // if recovery times out — knowing the final state of the thread is the
+    // difference between "Backboard never replied" and "Backboard replied
+    // with REQUIRES_ACTION but we couldn't extract tool_calls."
+    let lastSeenAssistantStatus: string | null = null;
     while (Date.now() - start < maxMs) {
       await new Promise((r) => setTimeout(r, intervalMs));
       try {
@@ -255,26 +266,58 @@ class BackboardImpl implements BackboardClient {
           role?: string;
           status?: string;
           content?: string | null;
+          tool_calls?: unknown[];
+          requires_action?: { tool_calls?: unknown[] };
         }>;
         if (msgs.length <= baselineCount) continue;
-        // Walk from the end for the newest completed assistant reply with
-        // real content (skip the empty REQUIRES_ACTION assistant turn that
-        // preceded the tool call).
+        // Walk from the end for the newest recoverable assistant turn. We
+        // accept two outcomes:
+        //   1. COMPLETED + text  → the model's final reply; return as completed.
+        //   2. REQUIRES_ACTION + tool_calls → the model chained to another
+        //      tool call (e.g. parse_uploaded_document → audit_content_pedagogically).
+        //      Return as requires_action so runToolLoop can continue the loop.
+        // The earlier version only handled (1) and silently skipped (2),
+        // which is why audit-after-upload turns failed: the streaming-blip
+        // 500 hid a perfectly-valid chained tool call.
         for (let i = msgs.length - 1; i >= baselineCount; i--) {
           const m = msgs[i];
-          const isAssistant = m.role === "assistant";
-          const isCompleted =
-            (m.status ?? "").toString().toUpperCase() === "COMPLETED";
-          const text = (m.content ?? "").trim();
-          if (isAssistant && isCompleted && text) {
-            console.info(
-              `[backboard:pollForAssistantReply] recovered reply after ` +
-                `${Date.now() - start}ms (msg index ${i})`
-            );
-            return parseResponse(
-              { status: "COMPLETED", content: text },
-              threadId
-            );
+          if (m.role !== "assistant") continue;
+          const status = (m.status ?? "").toString().toUpperCase();
+          if (status === "COMPLETED") {
+            const text = (m.content ?? "").trim();
+            if (text) {
+              console.info(
+                `[backboard:pollForAssistantReply] recovered COMPLETED reply ` +
+                  `after ${Date.now() - start}ms (msg index ${i})`
+              );
+              return parseResponse(
+                { status: "COMPLETED", content: text },
+                threadId
+              );
+            }
+          }
+          if (status === "REQUIRES_ACTION") {
+            lastSeenAssistantStatus = "REQUIRES_ACTION";
+            const toolCalls =
+              m.tool_calls ?? m.requires_action?.tool_calls ?? [];
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+              console.info(
+                `[backboard:pollForAssistantReply] recovered REQUIRES_ACTION ` +
+                  `(${toolCalls.length} tool call(s)) after ${Date.now() - start}ms ` +
+                  `(msg index ${i})`
+              );
+              return parseResponse(
+                {
+                  status: "REQUIRES_ACTION",
+                  tool_calls: toolCalls,
+                  content: null,
+                },
+                threadId
+              );
+            }
+          }
+          if (status === "COMPLETED" || status === "REQUIRES_ACTION") {
+            lastSeenAssistantStatus = status;
           }
         }
       } catch {
@@ -282,7 +325,8 @@ class BackboardImpl implements BackboardClient {
       }
     }
     console.warn(
-      `[backboard:pollForAssistantReply] no new assistant reply in ${maxMs}ms`
+      `[backboard:pollForAssistantReply] no recoverable assistant reply in ` +
+        `${maxMs}ms (last seen assistant status: ${lastSeenAssistantStatus ?? "none"})`
     );
     return null;
   }

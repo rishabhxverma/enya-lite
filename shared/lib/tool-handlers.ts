@@ -23,17 +23,56 @@ import {
   suggestPausePoints,
 } from "@shared/lib/youtube-transcript";
 
-export function buildTeacherHandlers(): ToolHandlerMap {
+export interface TeacherHandlerContext {
+  attachments?: {
+    documentId?: string;
+    uploadId?: string;
+    filename?: string;
+    pageCount?: number;
+    chunkCount?: number;
+  }[];
+}
+
+export function buildTeacherHandlers(
+  ctx: TeacherHandlerContext = {}
+): ToolHandlerMap {
+  // Match an attachment to the model's args. The model may pass fileName
+  // (matching the upload) or just rely on the single attached doc — both
+  // are common after a fresh upload.
+  const findAttachment = (args: Record<string, unknown>) => {
+    const list = ctx.attachments ?? [];
+    if (list.length === 0) return undefined;
+    const fileName = args.fileName as string | undefined;
+    const uploadId = args.uploadId as string | undefined;
+    return (
+      list.find(
+        (a) =>
+          (fileName && a.filename === fileName) ||
+          (uploadId && a.uploadId === uploadId)
+      ) ?? list[0]
+    );
+  };
+
   return {
     parse_uploaded_document: async (args) => {
+      // The client already parsed and indexed the document before this
+      // turn ran (see /api/teacher/parse-document via uploadFile). When the
+      // model still calls parse_uploaded_document, echo the real upload
+      // stats from the attachment instead of the legacy stub numbers — the
+      // two cards in the UI must agree.
+      const att = findAttachment(args);
       const filename =
-        (args.fileName as string) ?? (args.uploadId as string) ?? "textbook.pdf";
+        att?.filename ??
+        (args.fileName as string) ??
+        (args.uploadId as string) ??
+        "textbook.pdf";
       return {
-        documentId: STUB_DOCUMENT_ID,
-        pageCount: 47,
-        chunkCount: 142,
+        documentId: att?.documentId ?? STUB_DOCUMENT_ID,
+        pageCount: att?.pageCount ?? 47,
+        chunkCount: att?.chunkCount ?? 142,
         status: "ready",
         fileName: filename,
+        alreadyIndexed: Boolean(att?.documentId),
       };
     },
     generate_course_outline: async () => ({
