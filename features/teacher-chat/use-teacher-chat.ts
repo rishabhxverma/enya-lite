@@ -39,7 +39,7 @@ export function useTeacherChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([greetingMsg]);
   const [attachments, setAttachments] = useState<AttachmentChip[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const { getOrCreate } = useThreadStore();
+  const { getOrCreate, set: setThread } = useThreadStore();
 
   const send = useCallback(
     async (content: string) => {
@@ -71,6 +71,11 @@ export function useTeacherChat() {
           content,
           attachments: userMsg.attachments,
         });
+        // Server may rotate a stale stub_thread_* into a real Backboard
+        // thread; persist the new id so subsequent turns hit the right one.
+        if (reply.threadRotated && reply.threadId !== threadId) {
+          setThread("teacher-main", reply.threadId);
+        }
         setMessages((m) =>
           m.map((msg) =>
             msg.id === pendingId
@@ -101,7 +106,7 @@ export function useTeacherChat() {
         setIsSending(false);
       }
     },
-    [attachments, getOrCreate]
+    [attachments, getOrCreate, setThread]
   );
 
   /**

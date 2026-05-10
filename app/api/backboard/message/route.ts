@@ -61,9 +61,25 @@ export async function POST(req: Request) {
 
   try {
     const client = getBackboardClient();
+
+    // Auto-rotate stub thread IDs. The /api/backboard/thread route falls
+    // back to `stub_thread_*` IDs when Backboard create-thread fails (or
+    // the env vars are missing at create time). Once the live key is set,
+    // those persisted stub IDs poison every subsequent message because
+    // Backboard 500s on a thread that doesn't exist. Detect and rotate
+    // transparently — frontend reads the new threadId out of the response.
+    let activeThreadId = body.threadId;
+    if (activeThreadId.startsWith("stub_thread_")) {
+      console.warn(
+        `[backboard/message] rotating stub thread ${activeThreadId} → fresh Backboard thread`
+      );
+      const fresh = await client.createThread(assistantId);
+      activeThreadId = fresh.id;
+    }
+
     const { final, toolResults } = await client.runToolLoop(
       {
-        threadId: body.threadId,
+        threadId: activeThreadId,
         assistantId,
         content: body.content + attachmentsBlock,
         tools,
@@ -72,7 +88,8 @@ export async function POST(req: Request) {
       handlers
     );
     return NextResponse.json({
-      threadId: body.threadId,
+      threadId: activeThreadId,
+      threadRotated: activeThreadId !== body.threadId,
       content: final.content,
       toolResults,
     });
