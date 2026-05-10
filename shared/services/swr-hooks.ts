@@ -96,7 +96,7 @@ export function useVideoLessonSWR(
   lessonId: string | null | undefined,
   youtubeId: string,
   learningObjectives: string[] = [],
-  config?: SWRConfiguration
+  config?: SWRConfiguration & { fallbackData?: VideoLessonContent | null }
 ): SWRResponse<VideoLessonContent | null> {
   const key =
     studentId && lessonId
