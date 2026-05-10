@@ -49,3 +49,8 @@ public/seed/gate-test/
 # OS
 .DS_Store
 Thumbs.db
+
+# Firebase
+firebase-debug.log
+firestore-debug.log
+.firebase/

@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, AxiosError } from "axios";
-import pRetry from "p-retry";
+// p-retry v6 moved AbortError to a named export (was `pRetry.AbortError` in v5).
+import pRetry, { AbortError } from "p-retry";
 import type { ToolDefinition } from "@shared/types";
 
 export interface CreateThreadResult {
@@ -93,7 +94,7 @@ class BackboardImpl implements BackboardClient {
           const status = ax.response?.status;
           if (status && status >= 400 && status < 500 && status !== 429) {
             // non-retriable client error
-            throw new pRetry.AbortError(
+            throw new AbortError(
               `[backboard:${label}] ${status} ${JSON.stringify(
                 ax.response?.data ?? ax.message
               )}`

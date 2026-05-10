@@ -1,0 +1,77 @@
+# Firebase App Hosting — runtime config for Enya Lite.
+#
+# Why App Hosting (not classic Firebase Hosting): this app uses Next.js 16
+# App Router with API routes, server actions, and per-request rendering.
+# Classic Firebase Hosting only serves static assets; App Hosting is the
+# SSR-native option that Firebase ships specifically for Next.js.
+#
+# Setup is one-time:
+#   firebase login
+#   firebase init apphosting        # creates a backend linked to GitHub
+#   firebase apphosting:secrets:set BACKBOARD_API_KEY     # repeat per secret
+#   git push                                              # auto-deploys
+#
+# Plain env vars below ship with the build; secret refs are pulled from
+# Cloud Secret Manager at runtime so they never appear in source.
+
+runConfig:
+  # 0 instances when idle (cheap), bump up only on traffic. Demo doesn't need
+  # always-on warm pool.
+  minInstances: 0
+  maxInstances: 1
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  # ----- public client-side flags (safe to commit & ship in build) ----------
+  - variable: NEXT_PUBLIC_USE_SEED_FALLBACK
+    value: "false"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_VOICE_MODE
+    value: "live"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_IMAGE_MODE
+    value: "auto"
+    availability: [BUILD, RUNTIME]
+
+  - variable: BACKBOARD_API_URL
+    value: "https://api.backboard.io"
+    availability: [BUILD, RUNTIME]
+
+  # Docling sidecar isn't deployed alongside the Firebase app yet — point it
+  # at a public URL when you have one (Cloud Run is the natural home). Until
+  # then PDF parsing falls back to the keyword-dispatch stub.
+  - variable: DOCLING_SIDECAR_URL
+    value: ""
+    availability: [BUILD, RUNTIME]
+
+  # ----- secrets (set via `firebase apphosting:secrets:set <NAME>`) ---------
+  # Each `secret:` entry references a secret in Google Cloud Secret Manager.
+  # The CLI prompts for the value, stores it there, and grants the App
+  # Hosting backend permission to read it. Never commit real values.
+  - variable: BACKBOARD_API_KEY
+    secret: BACKBOARD_API_KEY
+    availability: [RUNTIME]
+
+  - variable: BACKBOARD_ASSISTANT_ID
+    secret: BACKBOARD_ASSISTANT_ID
+    availability: [RUNTIME]
+
+  - variable: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+    availability: [RUNTIME]
+
+  - variable: ELEVENLABS_API_KEY
+    secret: ELEVENLABS_API_KEY
+    availability: [RUNTIME]
+
+  - variable: ELEVENLABS_AGENT_ID
+    secret: ELEVENLABS_AGENT_ID
+    availability: [RUNTIME]
+
+  - variable: YOUTUBE_API_KEY
+    secret: YOUTUBE_API_KEY
+    availability: [RUNTIME]
