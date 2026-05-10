@@ -249,7 +249,33 @@ class BackboardImpl implements BackboardClient {
           output,
         });
       }
-      response = await this.submitToolOutputs(opts.threadId, outputs);
+      // Backboard's POST /threads/tool-outputs is intermittently 500-ing
+      // (and sometimes returns 404 "no pending tool calls" on retries even
+      // when the previous submit landed). When that happens, we DON'T want
+      // to throw away the locally-computed tool results and surface a
+      // generic "snag" message — the tools actually ran. Catch the submit
+      // error, stop the loop, and return a synthesized completed response
+      // with a short summary so the UI can render the tool results.
+      try {
+        response = await this.submitToolOutputs(opts.threadId, outputs);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `[backboard:runToolLoop] submitToolOutputs failed at round ${round}: ${message}. ` +
+            `Returning ${toolResults.length} local tool result(s) without the assistant's follow-up.`
+        );
+        const ranTools = toolResults.map((t) => t.toolName).join(", ");
+        return {
+          final: {
+            threadId: opts.threadId,
+            status: "completed" as const,
+            content: `(Backboard couldn't accept the tool result — ran ${ranTools} locally; please retry the message or use the seed-fallback toggle.)`,
+            toolCalls: [],
+            rawResponse: { _submitError: message },
+          },
+          toolResults,
+        };
+      }
     }
     return { final: response, toolResults };
   }
@@ -273,10 +299,16 @@ function parseResponse(
     }>;
     requires_action?: { tool_calls?: unknown[] };
   };
+  // Backboard returns status in UPPERCASE (REQUIRES_ACTION, COMPLETED,
+  // IN_PROGRESS, FAILED, CANCELLED) per docs.backboard.io. Normalize before
+  // comparison — earlier code compared against lowercase and silently
+  // treated tool-call responses as completed, returning Backboard's
+  // "Message added successfully" ack as the assistant reply.
+  const rawStatus = (d?.status ?? "").toString().toLowerCase();
   let status: BackboardMessageResponse["status"] = "completed";
-  if (d?.status === "requires_action" || d?.requires_action) {
+  if (rawStatus === "requires_action" || d?.requires_action) {
     status = "requires_action";
-  } else if (d?.status === "failed") {
+  } else if (rawStatus === "failed") {
     status = "failed";
   }
   const rawCalls =
@@ -304,10 +336,14 @@ function parseResponse(
     })
     .filter((c) => c.name);
 
+  // `d.message` is Backboard's request-level ack (e.g. "Message added
+  // successfully"), NOT assistant content. Don't fall through to it — leave
+  // content empty when the assistant produced no text (e.g. it's emitting
+  // tool_calls instead, in which case status === "requires_action").
   return {
     threadId,
     status,
-    content: d?.content ?? d?.text ?? d?.message ?? "",
+    content: d?.content ?? d?.text ?? "",
     toolCalls,
     rawResponse: data,
   };

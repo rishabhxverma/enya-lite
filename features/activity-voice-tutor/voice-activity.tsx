@@ -17,12 +17,24 @@ interface Props {
   lessonId: string;
 }
 
+interface MissionTaskHint {
+  id: string;
+  shortLabel: string;
+}
+
 interface VoiceSessionPayload {
   signedUrl: string | null;
   agentPersonaPrompt: string;
   voiceMode: string;
   fallbackMp3: string;
   maxDurationSeconds?: number;
+  // Optional Mission payload — when present, the UI renders a 3-dot task
+  // indicator above the mic orb. See voice-missions.ts for shape.
+  mission?: {
+    missionFrame: string;
+    openingLine: string;
+    tasks: MissionTaskHint[];
+  };
 }
 
 export function VoiceActivity({ studentId, lessonId }: Props) {
@@ -31,6 +43,13 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
   const [transcript, setTranscript] = useState<
     { who: "tutor" | "student"; text: string }[]
   >([]);
+  // Mission task hints, plus a heuristic completed-count. We don't have a
+  // live tool-call from the agent telling us which tasks are done (Phase B),
+  // so we approximate: each tutor message after a student turn = +1 task
+  // completed, capped at the task count. Good enough for the demo arc.
+  const [missionTasks, setMissionTasks] = useState<MissionTaskHint[]>([]);
+  const [missionCompleted, setMissionCompleted] = useState(0);
+  const lastTurnRef = useRef<"tutor" | "student" | null>(null);
   // `liveActive` flips true the moment we hand off to ElevenLabs. Used to
   // decide whether `end` calls the SDK's endSession() vs just stops the
   // simulated audio.
@@ -59,6 +78,16 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
       if (!message) return;
       const who = source === "user" ? "student" : "tutor";
       setTranscript((t) => [...t, { who, text: message }]);
+      // Mission progress heuristic: when the tutor speaks right after a
+      // student turn, we treat that as "task completed". Caps at task
+      // count. This is a stand-in until Phase B wires the agent's
+      // update_task_state tool calls.
+      if (who === "tutor" && lastTurnRef.current === "student") {
+        setMissionCompleted((c) =>
+          Math.min(missionTasks.length || 3, c + 1)
+        );
+      }
+      lastTurnRef.current = who;
     },
     onError: (msg, ctx) => {
       console.error("[voice-activity] elevenlabs error", msg, ctx);
@@ -126,12 +155,19 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
   const start = async () => {
     setState("connecting");
     setTranscript([]);
+    setMissionCompleted(0);
+    lastTurnRef.current = null;
     try {
       const session = (await studentService.getVoiceSession({
         studentId,
         lessonId,
         activitySubtype: "explain-back",
       })) as VoiceSessionPayload;
+
+      // Pull the Mission tasks (3 hand-authored tasks for Maya/Liam, generic
+      // fallback for any other student). Rendered as a 3-dot progress
+      // indicator below.
+      if (session.mission?.tasks) setMissionTasks(session.mission.tasks);
 
       const useSimulated =
         !session.signedUrl || session.voiceMode === "simulated";
@@ -145,6 +181,8 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
       // — that's how ElevenLabs lets you swap the system prompt per call
       // without redefining the agent. (Requires "first message" + "system
       // prompt" overrides to be enabled on the agent in the EL dashboard.)
+      // We also override `firstMessage` with the Mission's opening line so
+      // the agent enters in-character without the dashboard's default greeting.
       try {
         liveActiveRef.current = true;
         await conversation.startSession({
@@ -152,6 +190,7 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
           overrides: {
             agent: {
               prompt: { prompt: session.agentPersonaPrompt },
+              firstMessage: session.mission?.openingLine,
             },
           },
         } as Parameters<typeof conversation.startSession>[0]);
@@ -244,6 +283,40 @@ export function VoiceActivity({ studentId, lessonId }: Props) {
           state === "speaking") && (
           <div className="grid sm:grid-cols-[1fr_280px] gap-6 items-start">
             <div className="text-center py-10">
+              {/* Mission task progress strip */}
+              {missionTasks.length > 0 && (
+                <div className="mb-6 mx-auto max-w-md">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Mission
+                  </div>
+                  <div className="flex items-center justify-center gap-3">
+                    {missionTasks.map((task, i) => {
+                      const done = i < missionCompleted;
+                      return (
+                        <div key={task.id} className="flex flex-col items-center gap-1.5">
+                          <div
+                            className={cn(
+                              "w-3 h-3 rounded-full transition-all duration-500",
+                              done ? "scale-110" : "scale-100 opacity-30"
+                            )}
+                            style={{
+                              backgroundColor: done
+                                ? "var(--student-accent, #f59e0b)"
+                                : "rgba(0,0,0,0.25)",
+                              boxShadow: done
+                                ? "0 0 10px var(--student-accent, #f59e0b)"
+                                : "none",
+                            }}
+                          />
+                          <div className="text-[10px] text-muted-foreground max-w-[110px] leading-tight">
+                            {task.shortLabel}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <motion.div
                 animate={{
                   scale:
