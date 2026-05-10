@@ -6,6 +6,31 @@
 
 ---
 
+## 🟢 Status (post-overnight)
+
+R-04 through R-09 were front-loaded into the overnight run because the autonomous session finished P0 in ~3 hours. Most of the morning's wiring work is already on disk.
+
+| Task | Status | Notes |
+|---|---|---|
+| R-01 Morning triage | ⏳ Pending | Read `OVERNIGHT-REPORT.md`, run `npm run check` (20-pt pre-demo). All checks were green at session end. |
+| R-02 Patch broken P0 | ⏳ Pending | No known patches needed. Verify with smoke scripts. |
+| R-03 Pre-generate demo content | 🟡 Partial | Seed files exist with high-quality Rishabh-authored content. Once `BACKBOARD_API_KEY` lands, optionally re-run a script to overwrite with real Claude-Sonnet generations for "live" wow factor. |
+| R-04 Wire teacher chat | ✅ DONE | `features/teacher-chat/` fully functional. Empty state with chips, drag-drop upload, all 5 tool result cards, keyword-dispatched stub fallback when no key. Replace fallback with live `runToolLoop` when `BACKBOARD_ASSISTANT_ID` is set — already wired in `/api/backboard/message`. |
+| R-05 Wire student dashboard | ✅ DONE | `features/student-dashboard/` — themed hero, quick stats row, today's lesson card, motivational nudges. `useStudentDashboard` hook handles seed → API → fallback chain. |
+| R-06 Wire text lesson | ✅ DONE | `features/activity-text-lesson/` — react-markdown body, themed accents, emoji diagram cards, 3 interactive comprehension questions, confetti on full streak, completion + XP wired into progress store. |
+| R-07 Wire video lesson | ✅ DONE | `features/activity-video-lesson/` — react-youtube + auto-pause overlay quiz Dialog at scripted timestamps, resume on answer. |
+| R-08 Wire voice activity | 🟡 Partial | Splash + animated mic orb + countdown timer + scripted simulated transcript + summary card all done. **Morning task:** swap simulated branch for live `useConversation` from `@elevenlabs/react` (~30 min). API route already returns the signed URL + persona prompt when keys are present. |
+| R-09 Wire story game | ✅ DONE | `features/activity-story-game/` — branching nodes, gentle teaching-moment modal, confetti on completion, emoji-scene fallback when illustration missing. Loads from seed JSON; falls back to live API when seed missing. |
+| R-10 Final integration smoke + rehearsal | ⏳ Pending | Walk demo path + test fallback toggles + pin commits. |
+| R-11 Streaming tool-call states (P1) | ❌ Not done | Optional polish; current single POST/await pattern works fine. |
+| **D-06b** Client seed-fallback runtime toggle | ⏳ NEW (Demi reassignment) | `localStorage.USE_SEED_FALLBACK='true'` should make every client service hit `/seed/*.json` directly. ~20 min. |
+| **D-09** SWR caching hooks | ⏳ NEW (Demi reassignment) | Wrap dashboard/course/progress reads so role flips don't re-hit endpoint. ~25 min. |
+| **D-13** Demo standby | ⏳ NEW (Demi reassignment) | Sit next to Amin during rehearsals, fix bugs live. ~60 min spread across afternoon. |
+
+**Repo:** https://github.com/rishabhxverma/enya-lite (private, master tracked).
+
+---
+
 ## Reading Order
 1. `ultraplan-00-architecture.md` (architecture + types)
 2. `ultraplan-01-overnight-session.md` (your overnight plan)

@@ -2,7 +2,39 @@
 
 > **Role:** Founder. The "this needs to be Enya-quality" voice. Cannot code UI components but everything else is fair game — and your work directly drives demo quality.
 > **You DO:** Refine system prompts, design tool descriptions, create seed data, write demo script, prepare physical demo materials, configure Backboard/ElevenLabs dashboards, coordinate, rehearse.
-> **You DON'T:** Code UI/components, write API routes, debug Zustand. (Those are Akin/Rishabh/Demi.)
+> **You DON'T:** Code UI/components, write API routes, debug Zustand. (Those are Akin/Rishabh — Demi unavailable; see `ultraplan-05` for redistribution.)
+
+---
+
+## 🟢 Status (post-overnight)
+
+The overnight session pre-authored all of Amin's seed data + initial story arcs at high quality. Amin's morning is now mostly **dashboard configuration (Backboard + ElevenLabs)**, **content authoring polish**, and **rehearsal**.
+
+| Task | Status | Notes |
+|---|---|---|
+| AM-01 Backboard assistant config | ⏳ Pending (Amin) | Dashboard work only Amin can do — create assistant, paste system prompt verbatim from `ultraplan-02` §1, share assistant ID with Rishabh for `.env.local`. |
+| AM-02 ElevenLabs agent config | ⏳ Pending (Amin) | Pick warm voice (Bella/Rachel), paste `ultraplan-02` §4 system prompt, share agent ID. |
+| AM-03 Master demo PDF | ⏳ Pending (Amin) | Place 15-25 page Grade-3 photosynthesis PDF at `_demo-assets/grade3-science-photosynthesis.pdf`. |
+| AM-04 Refine tool descriptions | 🟡 Partial | Overnight wrote solid descriptions for all 25 tools at `shared/lib/tools/{teacher,student}-tools.ts`. Amin should stress-test in Backboard dashboard chat once AM-01 is set up. |
+| AM-05 Author students.json | ✅ DONE overnight | Maya + Liam profiles written with rich cultural backgrounds and 4-tag interests. Amin can refine wording if needed. |
+| AM-06 Author courses.json | ✅ DONE overnight | 1 photosynthesis course, 1 unit, 3 lessons, 4 activities each, BC G3 Sci 2.1 mapped. |
+| AM-07 Author story game skeletons | ✅ DONE overnight | Both Maya (4-node butterfly garden) + Liam (4-node space station hydroponics) full arcs. Read in `public/seed/lessons-{maya,liam}/photosynthesis-1-story.json`. Refine if you want. |
+| AM-08 Theme hero images | 🟡 Partial | Beautiful SVG placeholders shipped (`maya-hero.svg` watercolor garden + `liam-hero.svg` cosmic nebula). Run `npm run image-gate` once `OPENAI_API_KEY` is set to upgrade to AI-generated panoramic JPGs, or keep the SVGs — they look great. |
+| AM-09 Voice fallback MP3s | ❌ Not done | Need ElevenLabs key. Scripts are ready in original spec (Maya explain-back, Liam debate). Generate via ElevenLabs TTS API once AM-02 is done. **Note:** voice activity already runs a scripted simulated transcript without MP3 — fallback works as-is. MP3 polish is nice-to-have. |
+| AM-10 Curated image library | ⏳ Conditional | Only needed if image gate fails. Skip until Rishabh runs `npm run image-gate`. |
+| AM-11 Demo rehearsal R1 | ⏳ Pending | Walk `ultraplan-07-demo-script.md` end-to-end with team. Time each segment. |
+| AM-12 Demo rehearsal R2 | ⏳ Pending | Second walkthrough with R1 fixes applied. |
+| AM-13 Live demo | ⏳ Pending | The moment. |
+| **D-12 ownership** Pre-demo check runner | ⏳ NEW (Demi reassignment) | Adopt `npm run check` as part of AM-11 / AM-12 rehearsal warm-up. 20-pt automated check, no coding required. |
+| **D-10 (verification half)** Lighthouse | ⏳ NEW (Demi reassignment) | Run Chrome DevTools Lighthouse on Maya dashboard during AM-11. Flag any score <70 to Akin/Rishabh. |
+
+**Demo escape hatch (memorize):** If anything fails mid-demo, paste in browser console:
+```js
+window.localStorage.setItem('USE_SEED_FALLBACK', 'true'); location.reload();
+```
+The entire demo runs from pre-generated seed JSON. Nothing is fake — it was all generated overnight and saved to `public/seed/`.
+
+**Closing-slide demo aid:** `localhost:3000/demo/l4` renders Maya's vs Liam's text lesson side-by-side with the live 70.8% Levenshtein delta callout. Use this for segment 6 closing.
 
 ---
 

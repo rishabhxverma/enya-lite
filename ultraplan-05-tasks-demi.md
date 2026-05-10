@@ -6,6 +6,34 @@
 
 ---
 
+## ⚠️ Demi unavailable — task redistribution
+
+Demi can't make it. Of his 13 tasks, **9 were front-loaded into the overnight session** and are already done. The remaining 4 are split between Rishabh, Akin, and Amin.
+
+| Task | Status | New owner | Notes |
+|---|---|---|---|
+| D-01 RoleStore | ✅ DONE overnight | — | `shared/stores/role-store.ts` |
+| D-02 StudentStore | ✅ DONE overnight | — | `shared/stores/student-store.ts` (hydrates from `/seed/students.json`) |
+| D-03 ProgressStore | ✅ DONE overnight | — | `shared/stores/progress-store.ts` (XP, streak, completed activities, mastery, persisted to localStorage) |
+| D-04 ThreadStore | ✅ DONE overnight | — | `shared/stores/thread-store.ts` (sessionStorage + getOrCreate dedup) |
+| D-05 Service layer | ✅ DONE overnight | — | `shared/services/{backboard,teacher,student}-service.ts` |
+| D-06a Seed-fallback loader (server) | ✅ DONE overnight | — | `shared/lib/seed-loader.ts` reads `public/seed/*.json` from API routes |
+| **D-06b Seed-fallback runtime toggle (client)** | ⏳ **Rishabh** | Rishabh | `localStorage.USE_SEED_FALLBACK='true'` should make every client service hit `/seed/*.json` directly. Demo escape hatch. ~20 min. |
+| D-07 Grading + completion | ✅ DONE overnight | — | `shared/lib/grading.ts` — Levenshtein-tolerant fill-blank, multiple-choice, true-false, completion rules per activity type |
+| D-08 L4 differential test | ✅ DONE overnight | — | `npm run demo:l4` prints terminal proof. Currently 70.8% Levenshtein delta (>40% threshold). |
+| **D-09 SWR caching hooks** | ⏳ **Rishabh** | Rishabh | Wrap `useDashboard`, `useCourse`, `useProgress` so flipping Maya↔Liam doesn't re-hit endpoints. ~25 min. |
+| **D-10 Performance audit** | ⏳ **split Akin + Amin** | Akin (visual) + Amin (verification) | **Akin:** image preload `<link>`, add `width`/`height` to `<img>`, kill CLS, ensure motion doesn't re-render ancestors (~25 min). **Amin:** run Lighthouse during AM-11 rehearsal, flag any score <70 to Akin/Rishabh. |
+| D-11 Health banner | ✅ DONE overnight | — | `features/health-banner/health-banner.tsx` polls `/api/health` every 30s |
+| D-12 Pre-demo smoke script | ✅ DONE overnight | — | `npm run check` — 20-pt readiness check |
+| D-12 ownership transfer | ⏳ **Amin** | Amin | Adopt `npm run check` as part of AM-11 / AM-12 rehearsal warm-up. Just needs a human to commit to running it. |
+| **D-13 Final test pass + demo standby** | ⏳ **Rishabh** | Rishabh | Sit next to Amin during rehearsals, fix bugs live. ~60 min spread across afternoon. |
+
+**Net effect:** Rishabh picks up ~105 min of additional work (D-06b + D-09 + D-13). Akin picks up ~25 min (D-10 visual half). Amin adds verification duties to his rehearsal flow (no new coding).
+
+The original Demi spec sections below remain as reference — they document what was built and where, plus the remaining task definitions for the new owners.
+
+---
+
 ## Reading Order
 1. `ultraplan-00-architecture.md` — particularly §5 (data model), §10 (filesystem)
 2. This file

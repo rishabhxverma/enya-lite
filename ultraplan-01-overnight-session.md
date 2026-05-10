@@ -6,6 +6,34 @@
 
 ---
 
+## 🟢 Status (post-session, last updated end of overnight run)
+
+**Run summary:** ~3 hours of compute, 5 atomic commits, 159 source files, all 16 page routes + 29 API routes return 200, L4 differential 70.8%. Repo: https://github.com/rishabhxverma/enya-lite (private). Full handoff in `OVERNIGHT-REPORT.md`.
+
+| Task | Status | Notes |
+|---|---|---|
+| O-01 Project scaffold | ✅ DONE | Next 16.2.1 + React 19 + Tailwind 4 + Inter/Caveat/Orbitron fonts, path aliases wired |
+| O-02 Copy shadcn UI | ✅ DONE | 36 components verbatim from `_enya-reference/`, Enya 3D button variants intact |
+| O-03 Backboard SDK wrapper | ✅ DONE | typed client + p-retry + tool-loop; gracefully degrades to stub when no key |
+| O-04 Tool schemas | ✅ DONE | 25 tools (15 teacher + 10 student) in `shared/lib/tools/` |
+| O-05 API routes + handlers | ✅ DONE | 29 routes, all return 200 in smoke test, realistic typed stub responses |
+| O-06 Docling sidecar | ✅ DONE | FastAPI + pdfminer fallback; team needs `pip install -r docling-sidecar/requirements.txt` to run |
+| O-07 Real parse + Backboard upload | ⏳ WIRED, needs key | route calls Docling then Backboard.uploadDocument; activates the moment `BACKBOARD_API_KEY` lands |
+| O-08 Real LLM tool implementations (5) | ⏳ WIRED, needs key | tool-loop runs through real assistant once `BACKBOARD_API_KEY` + `BACKBOARD_ASSISTANT_ID` are set; until then, keyword-dispatched stub fallback in `/api/backboard/message` runs every demo prompt through the right handler |
+| O-09 ElevenLabs voice scaffold | 🟡 PARTIAL | API route + scripted simulated transcript + animated mic orb done; live `useConversation` hook is the morning's main remaining job (~30 min) |
+| O-10 Image gate | ⏳ SCRIPT READY | `npm run image-gate` runnable as soon as `OPENAI_API_KEY` is set; `NEXT_PUBLIC_IMAGE_MODE` defaults to auto with emoji tertiary fallback |
+| O-11 All page routes | ✅ DONE (and then some) | 16 routes scaffolded — but most are FUNCTIONAL not just placeholders (teacher chat, dashboards, all 4 activity pages, /demo/l4 closing slide) |
+| O-12 Pre-seed demo data | ✅ DONE | students.json + courses.json + dashboard-{maya,liam}.json + lessons-{maya,liam}/photosynthesis-1-{text,video,story}.json + youtube-fallbacks.json + _progress.json + hero SVGs + theme patterns + avatars |
+| O-13 Zustand stores | ✅ DONE | role, student, progress, thread (persist + ssr-safe) |
+| O-14 Smoke + handoff doc | ✅ DONE | `OVERNIGHT-REPORT.md`, README, `npm run check` (20-pt pre-demo) |
+| **P1 polish** | 🟡 PARTIAL | ✅ canvas-confetti on text-lesson streak + story completion. ✅ /demo/l4 side-by-side closing slide. ❌ Magic UI / Aceternity / react-bits not installed (used stock styling). |
+
+**Demo path verified visually** (homepage → teacher chat → audit card → Maya dashboard → Liam dashboard → text lesson → story game).
+
+**Hot spots for morning:** wire `useConversation` for live voice (~30 min), drop API keys, run `npm run smoke:backboard` to verify Backboard reachability, optionally re-run text-lesson generation through real LLM to overwrite seed JSON.
+
+---
+
 ## 0. Pre-Flight (10 min — DO THIS BEFORE STARTING THE AUTO SESSION)
 
 Manually do these, do NOT delegate. Required setup the agent can't do alone:
